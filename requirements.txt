@@ -1,0 +1,5 @@
+basedosdados
+numpy
+pandas
+pyarrow
+pytest
