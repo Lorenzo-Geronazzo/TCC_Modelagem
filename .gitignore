@@ -6,8 +6,6 @@ __pycache__/
 .mypy_cache/
 .vscode/
 
-# Bases geradas localmente pelo pipeline
-*.parquet
 
 # Credenciais e arquivos locais
 .env
