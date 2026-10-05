@@ -118,6 +118,43 @@ for (v in todas_dep) {
 }
 
 # ------------------------------------------------------------------------------
+# 5b) Limpeza (ver CLAUDE.md, "Limpeza da base"). Não apaga linhas nem valores
+#     originais: guarda a receita original e só cria uma coluna de marcação.
+# ------------------------------------------------------------------------------
+# a) Receita tributária: a original fica em receita_tributaria_real_pc_bruta;
+#    a versão usada no modelo vira NA em Tocantins 2024 (erro de lançamento do
+#    estado no ano) e quando o valor é negativo.
+base <- base |>
+  mutate(
+    receita_tributaria_real_pc_bruta = receita_tributaria_real_pc,
+    receita_tributaria_real_pc = ifelse(
+      (sigla_uf == "TO" & ano == 2024) | receita_tributaria_real_pc < 0,
+      NA, receita_tributaria_real_pc)
+  )
+
+# b) Despesa total per capita fora do padrão do próprio município:
+#    outlier_despesa = 1 se for menor que 0,2 × ou maior que 5 × a mediana
+#    do município (mediana calculada nos anos em que ele tem valor).
+base <- base |>
+  group_by(id_municipio) |>
+  mutate(mediana_despesa_total_pc = median(despesa_total_pc, na.rm = TRUE)) |>
+  ungroup() |>
+  mutate(outlier_despesa = as.integer(
+    !is.na(despesa_total_pc) &
+      (despesa_total_pc < 0.2 * mediana_despesa_total_pc |
+         despesa_total_pc > 5 * mediana_despesa_total_pc)))
+
+message("\nLimpeza — município-anos atingidos:")
+message("  receita tributária: TO 2024 = ",
+        sum(base$sigla_uf == "TO" & base$ano == 2024 & !is.na(base$receita_tributaria_real_pc_bruta)),
+        " | valor negativo = ", sum(base$receita_tributaria_real_pc_bruta < 0, na.rm = TRUE),
+        " | total que virou NA = ",
+        sum(is.na(base$receita_tributaria_real_pc) & !is.na(base$receita_tributaria_real_pc_bruta)))
+message("  despesa: outlier_despesa = 1 em ", sum(base$outlier_despesa), " município-anos")
+message("  município-anos sem limpeza: ", nrow(base),
+        " | com limpeza (outlier_despesa == 0): ", sum(base$outlier_despesa == 0))
+
+# ------------------------------------------------------------------------------
 # 6) Conferências e salvamento
 # ------------------------------------------------------------------------------
 message("\nBase de regressão: ", format(nrow(base), big.mark = ".", decimal.mark = ","), " município-anos, ",

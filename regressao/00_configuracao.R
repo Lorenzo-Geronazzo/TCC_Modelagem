@@ -192,7 +192,11 @@ NOTA_EP <- paste("Erros-padrão agrupados por município entre parênteses.",
                  "*** p<0,01; ** p<0,05; * p<0,1.")
 
 # Carrega a base de regressão (gerada por 01_base_regressao.R)
-carrega_base <- function() {
+# limpa = TRUE (padrão): tira os município-anos com outlier_despesa == 1
+# (ver CLAUDE.md, "Limpeza da base"). limpa = FALSE: base inteira (teste R10/R11).
+carrega_base <- function(limpa = TRUE) {
   if (!file.exists(BASE_REGRESSAO)) stop("Rode primeiro o 01_base_regressao.R")
-  readRDS(BASE_REGRESSAO)
+  base <- readRDS(BASE_REGRESSAO)
+  if (limpa) base <- base |> filter(outlier_despesa == 0)
+  base
 }

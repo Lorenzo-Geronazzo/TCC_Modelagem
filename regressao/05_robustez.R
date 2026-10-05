@@ -13,6 +13,10 @@
 #   R8  Assistência + Previdência (agrupamento do Sakurai)
 #   R9  Transporte, Agricultura e Comunicações só com municípios que informam
 #       a função em todos os anos em que aparecem na base
+#   R10 Sem limpeza: mantém os município-anos com outlier_despesa = 1 e usa a
+#       receita tributária original (inclusive TO 2024 e valores negativos)
+#   R11 Winsorização: base sem limpeza de despesa (receita já corrigida), com
+#       cada dependente per capita limitada aos percentis 1 e 99 de cada ano
 MODELO <- "within"   # manter igual ao 04_regressoes.R
 
 source(here::here("regressao", "00_configuracao.R"))
@@ -88,5 +92,27 @@ for (v in c("transporte", "agricultura", "comunicacoes")) {
 }
 roda_teste("R9", "só municípios que informam a função em todos os anos",
            modelos_r9, INTERESSE)
+
+# R10 — sem limpeza: base inteira (com os outliers de despesa) e receita
+# tributária original (receita_tributaria_real_pc_bruta)
+base_r10 <- carrega_base(limpa = FALSE) |>
+  mutate(receita_tributaria_real_pc = receita_tributaria_real_pc_bruta)
+roda_teste("R10", "sem limpeza (outliers de despesa e receita original)",
+           estima_todas(base_r10, X), INTERESSE)
+
+# R11 — winsorização: base inteira (receita já corrigida); em cada ano, cada
+# dependente per capita é limitada aos percentis 1 e 99 daquele ano
+# (valor abaixo do p1 vira p1; acima do p99 vira p99; NA continua NA)
+limita_p1_p99 <- function(x) {
+  p1  <- quantile(x, 0.01, na.rm = TRUE)
+  p99 <- quantile(x, 0.99, na.rm = TRUE)
+  pmin(pmax(x, p1), p99)
+}
+base_r11 <- carrega_base(limpa = FALSE) |>
+  group_by(ano) |>
+  mutate(across(all_of(paste0(DEPENDENTES, "_pc")), limita_p1_p99)) |>
+  ungroup()
+roda_teste("R11", "dependentes winsorizadas nos percentis 1 e 99 de cada ano",
+           estima_todas(base_r11, X), INTERESSE)
 
 message("Testes de robustez concluídos.")
