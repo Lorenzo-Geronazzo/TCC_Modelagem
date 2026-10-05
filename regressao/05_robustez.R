@@ -17,6 +17,10 @@
 #       receita tributária original (inclusive TO 2024 e valores negativos)
 #   R11 Winsorização: base sem limpeza de despesa (receita já corrigida), com
 #       cada dependente per capita limitada aos percentis 1 e 99 de cada ano
+#   R12 Erro-padrão de Driscoll-Kraay (mesmos modelos do principal)
+#   R13 Efeitos fixos de município e de ano (sem ano eleitoral, PIB nacional
+#       e tendências, colineares com o efeito de ano); só as coalizões
+#   R14 Inclui dummy de pandemia (pandemia_2020 = 1 em 2020)
 MODELO <- "within"   # manter igual ao 04_regressoes.R
 
 source(here::here("regressao", "00_configuracao.R"))
@@ -33,11 +37,12 @@ estima_todas <- function(dados, x, sufixo_y = "_pc", prefixo_y = "", dependentes
   modelos
 }
 
-roda_teste <- function(codigo, titulo, modelos, vars) {
+# vcov_fun e nota têm padrão (erro-padrão agrupado por município); o R12 troca os dois
+roda_teste <- function(codigo, titulo, modelos, vars, vcov_fun = vcov_cluster, nota = NOTA_EP) {
   message("Robustez ", codigo, ": ", titulo)
-  tab <- tabela_regressao(modelos, vars = vars)
+  tab <- tabela_regressao(modelos, vars = vars, vcov_fun = vcov_fun)
   salva_tabela(tab, paste0("robustez_", codigo),
-               titulo = paste0("Robustez ", codigo, " — ", titulo), nota = NOTA_EP)
+               titulo = paste0("Robustez ", codigo, " — ", titulo), nota = nota)
   invisible(tab)
 }
 
@@ -114,5 +119,33 @@ base_r11 <- carrega_base(limpa = FALSE) |>
   ungroup()
 roda_teste("R11", "dependentes winsorizadas nos percentis 1 e 99 de cada ano",
            estima_todas(base_r11, X), INTERESSE)
+
+# R12 — mesmos modelos do principal, com erro-padrão de Driscoll-Kraay
+# (robusto a correlação entre municípios no mesmo ano e a autocorrelação)
+vcov_dk <- function(m) plm::vcovSCC(m, type = "HC1")
+roda_teste("R12", "erro-padrão de Driscoll-Kraay",
+           estima_todas(base, X), INTERESSE, vcov_fun = vcov_dk,
+           nota = paste("Erros-padrão de Driscoll-Kraay entre parênteses.",
+                        "*** p<0,01; ** p<0,05; * p<0,1."))
+
+# R13 — efeitos fixos de município e de ano (twoways). O efeito de ano absorve
+# tudo o que só varia no tempo, então saem ano eleitoral, PIB nacional e
+# tendências (colineares com ele). Mostra só as coalizões.
+x_r13 <- c("coalizao_gov", "coalizao_pres", "receita_tributaria_real_pc",
+           "transf_correntes_real_pc", "perc_jovens", "perc_idosos",
+           "grau_urb", "ln_populacao")
+pbase <- pdata.frame(base, index = c("id_municipio", "ano"))
+modelos_r13 <- list()
+for (v in DEPENDENTES) {
+  modelos_r13[[rotulo(v)]] <- plm(monta_formula(paste0(v, "_pc"), x_r13), data = pbase,
+                                  model = "within", effect = "twoways")
+}
+roda_teste("R13", "efeitos fixos de município e de ano",
+           modelos_r13, c("coalizao_gov", "coalizao_pres"))
+
+# R14 — modelo principal + dummy de pandemia (ano de 2020)
+base_r14 <- base |> mutate(pandemia_2020 = as.integer(ano == 2020))
+roda_teste("R14", "inclui dummy de pandemia (2020)",
+           estima_todas(base_r14, c(X, "pandemia_2020")), c(INTERESSE, "pandemia_2020"))
 
 message("Testes de robustez concluídos.")

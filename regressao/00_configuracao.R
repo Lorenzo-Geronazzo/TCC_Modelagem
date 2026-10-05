@@ -116,13 +116,17 @@ estrelas <- function(p) ifelse(p < 0.01, "***", ifelse(p < 0.05, "**", ifelse(p 
 
 # Tabela de regressão: coeficiente (com estrelas) e erro-padrão entre parênteses.
 # modelos: lista nomeada de modelos plm; vars: variáveis a mostrar (NULL = todas)
-tabela_regressao <- function(modelos, vars = NULL, digitos = 3) {
+# vcov_fun: função que calcula a matriz de variância (padrão: agrupada por município)
+# Números com vírgula decimal (ex.: 203,869); ponto de milhar só em Observações/Municípios.
+num_virgula <- function(x, digitos) formatC(x, format = "f", digits = digitos, decimal.mark = ",")
+
+tabela_regressao <- function(modelos, vars = NULL, digitos = 3, vcov_fun = vcov_cluster) {
   colunas <- lapply(names(modelos), function(nome) {
     m  <- modelos[[nome]]
-    ct <- coeftest(m, vcov. = vcov_cluster(m))
+    ct <- coeftest(m, vcov. = vcov_fun(m))
     tibble(variavel = rownames(ct),
-           coef = sprintf(paste0("%.", digitos, "f%s"), ct[, 1], estrelas(ct[, 4])),
-           ep   = sprintf(paste0("(%.", digitos, "f)"), ct[, 2]))
+           coef = paste0(num_virgula(ct[, 1], digitos), estrelas(ct[, 4])),
+           ep   = paste0("(", num_virgula(ct[, 2], digitos), ")"))
   })
   names(colunas) <- names(modelos)
   todas <- unique(unlist(lapply(colunas, `[[`, "variavel")))
@@ -150,7 +154,7 @@ tabela_regressao <- function(modelos, vars = NULL, digitos = 3) {
     m <- modelos[[nome]]
     obs[nome]  <- format(nobs(m), big.mark = ".", decimal.mark = ",")
     muni[nome] <- format(pdim(m)$nT$n, big.mark = ".", decimal.mark = ",")
-    r2[nome]   <- sprintf("%.3f", summary(m)$r.squared["rsq"])
+    r2[nome]   <- num_virgula(summary(m)$r.squared["rsq"], 3)
   }
   as.data.frame(do.call(rbind, c(linhas, list(obs, muni, r2))), check.names = FALSE)
 }

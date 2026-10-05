@@ -118,7 +118,7 @@ Scripts em `regressao/`, rodar na ordem (ou tudo pelo `rodar_tudo.R`):
 - `02_descritivas.R`: tabelas descritivas (N, média, desvio-padrão, mínimo, máximo) das explicativas e das dependentes; gráfico da média anual de cada dependente per capita, em nível e em log, com faixas no ano eleitoral (laranja escuro) e pré-eleitoral (amarelo); painel com todas em log.
 - `03_hausman.R`: para cada dependente, efeitos fixos (`within`) × aleatórios; Hausman clássico (`phtest`) e robusto (Mundlak/Wooldridge: médias por município das variáveis que variam entre municípios, teste de Wald conjunto com erro-padrão agrupado). Tabela com o modelo indicado por cada teste.
 - `04_regressoes.R`: as 9 regressões principais (`MODELO <- "within"`; trocar para `"random"` se o Hausman indicar) e comparação pooled/FE/RE para a despesa total. Salva também `modelos_principais.rds`.
-- `05_robustez.R`: R1 coalizões sem fusões; R2 sem prefeito/governador de suplementar; R3 dependente em log; R4 participação na despesa total (%); R5 + pré-eleitoral; R6 + segundo mandato; R7 PIB municipal no lugar do nacional (2013-2023); R8 Assistência + Previdência; R9 Transporte, Agricultura e Comunicações só com os municípios que informam a função (valor > 0) em todos os anos em que aparecem na base; R10 sem limpeza (mantém `outlier_despesa = 1` e usa a receita tributária original, `receita_tributaria_real_pc_bruta`); R11 winsorização (base sem limpeza de despesa, receita já corrigida; cada dependente per capita limitada aos percentis 1 e 99 de cada ano). Cada tabela mostra só os coeficientes de interesse.
+- `05_robustez.R`: R1 coalizões sem fusões; R2 sem prefeito/governador de suplementar; R3 dependente em log; R4 participação na despesa total (%); R5 + pré-eleitoral; R6 + segundo mandato; R7 PIB municipal no lugar do nacional (2013-2023); R8 Assistência + Previdência; R9 Transporte, Agricultura e Comunicações só com os municípios que informam a função (valor > 0) em todos os anos em que aparecem na base; R10 sem limpeza (mantém `outlier_despesa = 1` e usa a receita tributária original, `receita_tributaria_real_pc_bruta`); R11 winsorização (base sem limpeza de despesa, receita já corrigida; cada dependente per capita limitada aos percentis 1 e 99 de cada ano); R12 erro-padrão de Driscoll-Kraay (`plm::vcovSCC(m, type = "HC1")`, mesmos modelos do principal; nota da tabela indica Driscoll-Kraay); R13 efeitos fixos de município e de ano (`effect = "twoways"`), sem ano eleitoral, PIB nacional e tendências (colineares com o efeito de ano), mostrando só `coalizao_gov` e `coalizao_pres`, erro-padrão agrupado por município; R14 modelo principal + `pandemia_2020` (= 1 em 2020, criada no 05, não no 01). Cada tabela mostra só os coeficientes de interesse.
 Decisões de estimação:
 - Erros-padrão agrupados por município (`vcovHC`, método Arellano, HC1) em todas as tabelas.
 - Efeitos aleatórios com o método Wallace-Hussain (`random.method = "walhus"`). Motivo: com variáveis que só variam no tempo (ano eleitoral, tendências, PIB nacional), a regressão "between" do método padrão (Swamy-Arora) fica singular e o modelo não roda.
@@ -139,7 +139,8 @@ Teste de Hausman (`03_hausman.R` → `regressao/saidas/tabelas/hausman.csv`; obs
 | Agricultura | 851,56 | 1,44e-174 | 267,87 | 2,79e-53 | Efeitos fixos | Efeitos fixos | 64.464 | 5.436 |
 | Comunicações | 173,55 | 8,96e-31 | 35,26 | 2,40e-05 | Efeitos fixos | Efeitos fixos | 12.360 | 1.896 |
 
-- Rodado na base real: 02 (descritivas), 03 (Hausman, ~14 s) e 04 (regressões principais e comparação pooled/FE/RE, ~15 s). 05 (robustez) ainda não rodado.
+- Rodado na base real: 02 (descritivas), 03 (Hausman, ~14 s), 04 (regressões principais e comparação pooled/FE/RE, ~15 s) e 05 (robustez R1-R14, ~107 s). Tabelas em `regressao/saidas/tabelas/robustez_R1` a `robustez_R14` (.csv e .docx).
+- Formatação das tabelas (`tabela_regressao()` no 00): coeficientes, erros-padrão e R² com vírgula decimal (`formatC(..., format = "f", decimal.mark = ",")`, ex.: 203,869); ponto de milhar só em Observações/Municípios. Argumento `vcov_fun` (padrão `vcov_cluster`) escolhe a matriz de variância; `roda_teste()` no 05 aceita `vcov_fun` e `nota`.
 
 ## Cobertura das funções e ausências (RESOLVIDO; antigo "A VER DEPOIS", item 1)
 **Ausência ≠ zero.** A classificação por função/subfunção é feita pela prefeitura; um gasto pode estar lançado em outra conta (ex.: publicidade em Administração Geral 04.122/04.999 ou dentro da própria área). Não preencher automaticamente com 0.
@@ -199,7 +200,7 @@ Feita no `01_base_regressao.R` (etapa 5b). A base salva NÃO apaga linhas nem va
 
 ## Pendências
 Cobertura temporal: PIB municipal só até 2023 (por isso entra só na robustez R7; o PIB nacional cobre 2013-2025). Siconfi 2025 tem menos municípios (~5.440 contra ~5.550). Receitas têm queda de cobertura em 2014 (~5.180 municípios). População 2024-25 já corrigida (ver IBGE anual).
-- Rodar o `05_robustez.R` na base real (01, 01b, 02, 03 e 04 já rodados).
+- Scripts de R já rodados na base real (01, 01b, 02, 03, 04 e 05).
 - 49 municípios sem prefeito eleito em 2024 (provavelmente eleição anulada sem suplementar na base): documentar como limitação.
 - Despesas por função no corpo do trabalho; investimentos (Anexo 2, natureza da despesa, municipio_despesas_orcamentarias) ficam como robustez.
 Variáveis do Censo não variam o suficiente para sobreviver a efeitos fixos de município. Úteis para descritivas e heterogeneidade.
