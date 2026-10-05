@@ -84,14 +84,27 @@ ROTULOS <- c(
   pib_nacional_tri   = "PIB nacional (R$ trilhões)",
   ln_pib_mun_pc      = "PIB municipal per capita (log)",
   tendencia          = "Tendência",
-  tendencia2         = "Tendência ao quadrado"
+  tendencia2         = "Tendência ao quadrado",
+  pandemia_2020      = "Pandemia (2020)"
 )
 
-# Variáveis explicativas do modelo principal (como Sakurai, 2009, sem ideologia)
-INTERESSE <- c("ano_eleitoral", "coalizao_gov", "coalizao_pres")
+# Especificação (ver CLAUDE.md, "Especificação: modelos A e B")
+# Modelo A ("ciclo eleitoral"): efeito fixo de município, INTERESSE_A + CONTROLES,
+#   erro-padrão de Driscoll-Kraay (robusto a choques comuns aos municípios no ano).
+# Modelo B ("coalizões"): efeitos fixos de município e de ano, coalizões +
+#   CONTROLES_B, erro-padrão agrupado por município. O efeito de ano absorve tudo
+#   o que só varia no tempo (ano eleitoral, PIB nacional, tendências).
+INTERESSE_A <- c("ano_eleitoral", "pre_eleitoral", "pandemia_2020",
+                 "coalizao_gov", "coalizao_pres")
+INTERESSE_B <- c("coalizao_gov", "coalizao_pres")
 CONTROLES <- c("receita_tributaria_real_pc", "transf_correntes_real_pc",
                "perc_jovens", "perc_idosos", "grau_urb", "ln_populacao",
                "pib_nacional_tri", "tendencia", "tendencia2")
+# Controles que variam entre municípios (os únicos que sobram com efeito de ano)
+CONTROLES_B <- c("receita_tributaria_real_pc", "transf_correntes_real_pc",
+                 "perc_jovens", "perc_idosos", "grau_urb", "ln_populacao")
+# Especificação de Sakurai (2009): usada nas descritivas e no teste de robustez R5
+INTERESSE <- c("ano_eleitoral", "coalizao_gov", "coalizao_pres")
 
 # ------------------------------------------------------------------------------
 # 4) Funções auxiliares
@@ -110,6 +123,10 @@ monta_formula <- function(y, x) as.formula(paste(y, "~", paste(x, collapse = " +
 
 # Erro-padrão agrupado por município (Arellano), para modelos do plm
 vcov_cluster <- function(modelo) vcovHC(modelo, method = "arellano", type = "HC1", cluster = "group")
+
+# Erro-padrão de Driscoll-Kraay (robusto a correlação entre municípios no mesmo
+# ano e a autocorrelação), usado no modelo A
+vcov_dk <- function(m) plm::vcovSCC(m, type = "HC1")
 
 # Estrelas de significância
 estrelas <- function(p) ifelse(p < 0.01, "***", ifelse(p < 0.05, "**", ifelse(p < 0.1, "*", "")))
@@ -178,7 +195,7 @@ salva_tabela <- function(tabela, nome, titulo = NULL, nota = NULL) {
 # conjuntamente zero (efeitos aleatórios consistentes). Rejeitar => efeitos fixos.
 # Variáveis que só mudam com o ano (ano eleitoral, tendências, PIB nacional) ficam
 # fora das médias: elas não variam entre municípios.
-hausman_mundlak <- function(dados, y, x, so_tempo = c("ano_eleitoral", "pre_eleitoral",
+hausman_mundlak <- function(dados, y, x, so_tempo = c("ano_eleitoral", "pre_eleitoral", "pandemia_2020",
                                                      "tendencia", "tendencia2", "pib_nacional_tri")) {
   d <- dados[stats::complete.cases(dados[, c(y, x)]), c("id_municipio", y, x)]
   com_media <- setdiff(x, so_tempo)
@@ -194,6 +211,10 @@ hausman_mundlak <- function(dados, y, x, so_tempo = c("ano_eleitoral", "pre_elei
 
 NOTA_EP <- paste("Erros-padrão agrupados por município entre parênteses.",
                  "*** p<0,01; ** p<0,05; * p<0,1.")
+NOTA_A <- paste("Efeito fixo de município. Erros-padrão de Driscoll-Kraay entre parênteses.",
+                "*** p<0,01; ** p<0,05; * p<0,1.")
+NOTA_B <- paste("Efeitos fixos de município e de ano. Erros-padrão agrupados por município",
+                "entre parênteses. *** p<0,01; ** p<0,05; * p<0,1.")
 
 # Carrega a base de regressão (gerada por 01_base_regressao.R)
 # limpa = TRUE (padrão): tira os município-anos com outlier_despesa == 1

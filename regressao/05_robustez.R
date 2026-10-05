@@ -1,109 +1,160 @@
 # ==============================================================================
 # 05_robustez.R — testes de robustez
 # ==============================================================================
-# Cada teste reestima as 9 regressões mudando UMA coisa em relação ao modelo
-# principal, e a tabela mostra só os coeficientes de interesse.
-#   R1  Coalizões sem fusões/incorporações de partidos
-#   R2  Sem município-anos com prefeito ou governador de eleição suplementar
-#   R3  Variável dependente em log
-#   R4  Variável dependente como participação na despesa total (%)
-#   R5  Inclui o ano pré-eleitoral
-#   R6  Inclui prefeito em segundo mandato
-#   R7  PIB municipal per capita no lugar do PIB nacional (amostra 2013-2023)
-#   R8  Assistência + Previdência (agrupamento do Sakurai)
+# Cada teste reestima o modelo A e/ou o modelo B (ver 04_regressoes.R) mudando
+# UMA coisa. A tabela mostra:
+#   - ano eleitoral e pré-eleitoral, do modelo A (erro-padrão Driscoll-Kraay);
+#   - coalizão do governador e do presidente, do modelo B (erro agrupado por município);
+# com o modelo de origem indicado em cada linha ("[modelo A]" / "[modelo B]").
+#   R1  Coalizões sem fusões/incorporações de partidos (A e B)
+#   R2  Sem município-anos com prefeito ou governador de eleição suplementar (A e B)
+#   R3  Variável dependente em log (A e B)
+#   R4  Variável dependente como participação na despesa total, % (A e B)
+#   R5  Especificação de Sakurai: modelo A sem pré-eleitoral e sem pandemia,
+#       erro agrupado por município (só modelo A)
+#   R6  Inclui prefeito em segundo mandato (A e B)
+#   R7  PIB municipal per capita, amostra 2013-2023 (A: no lugar do PIB
+#       nacional; B: somado aos controles) (A e B)
+#   R8  Assistência + Previdência (agrupamento do Sakurai) (A e B)
 #   R9  Transporte, Agricultura e Comunicações só com municípios que informam
-#       a função em todos os anos em que aparecem na base
+#       a função em todos os anos em que aparecem na base (A e B)
 #   R10 Sem limpeza: mantém os município-anos com outlier_despesa = 1 e usa a
-#       receita tributária original (inclusive TO 2024 e valores negativos)
+#       receita tributária original (A e B)
 #   R11 Winsorização: base sem limpeza de despesa (receita já corrigida), com
-#       cada dependente per capita limitada aos percentis 1 e 99 de cada ano
-#   R12 Erro-padrão de Driscoll-Kraay (mesmos modelos do principal)
-#   R13 Efeitos fixos de município e de ano (sem ano eleitoral, PIB nacional
-#       e tendências, colineares com o efeito de ano); só as coalizões
-#   R14 Inclui dummy de pandemia (pandemia_2020 = 1 em 2020)
-MODELO <- "within"   # manter igual ao 04_regressoes.R
-
+#       cada dependente per capita limitada aos percentis 1 e 99 de cada ano (A e B)
+#   R12 Modelo A com erro-padrão agrupado por município (só modelo A)
+#   R13 Modelo B com erro-padrão de Driscoll-Kraay (só modelo B)
+#   R14 Modelo A sem a dummy de pandemia (só modelo A)
 source(here::here("regressao", "00_configuracao.R"))
 base <- carrega_base()
 
-estima_todas <- function(dados, x, sufixo_y = "_pc", prefixo_y = "", dependentes = DEPENDENTES) {
+X_A <- c(INTERESSE_A, CONTROLES)
+X_B <- c(INTERESSE_B, CONTROLES_B)
+MOSTRA_A <- c("ano_eleitoral", "pre_eleitoral")   # linhas que saem do modelo A
+MOSTRA_B <- INTERESSE_B                           # linhas que saem do modelo B
+
+# ------------------------------------------------------------------------------
+# Funções auxiliares
+# ------------------------------------------------------------------------------
+# Estima as regressões de efeitos fixos para cada dependente.
+# efeito = "individual" (modelo A) ou "twoways" (modelo B)
+estima <- function(dados, x, efeito, sufixo_y = "_pc", prefixo_y = "", dependentes = DEPENDENTES) {
   pdados <- pdata.frame(dados, index = c("id_municipio", "ano"))
   modelos <- list()
   for (v in dependentes) {
     y <- paste0(prefixo_y, v, sufixo_y)
     if (!y %in% names(dados)) next
-    modelos[[rotulo(v)]] <- plm(monta_formula(y, x), data = pdados, model = MODELO, random.method = METODO_RE)
+    modelos[[rotulo(v)]] <- plm(monta_formula(y, x), data = pdados, model = "within", effect = efeito)
   }
   modelos
 }
+estima_A <- function(dados, x = X_A, ...) estima(dados, x, "individual", ...)
+estima_B <- function(dados, x = X_B, ...) estima(dados, x, "twoways", ...)
 
-# vcov_fun e nota têm padrão (erro-padrão agrupado por município); o R12 troca os dois
-roda_teste <- function(codigo, titulo, modelos, vars, vcov_fun = vcov_cluster, nota = NOTA_EP) {
+# Acrescenta "[modelo A]" ou "[modelo B]" ao nome das linhas (inclusive
+# Observações, Municípios e R²), para saber de qual modelo vem cada número
+marca_modelo <- function(tab, letra) {
+  v <- tab[["Variável"]]
+  tab[["Variável"]] <- ifelse(v == "", "", paste0(v, " [modelo ", letra, "]"))
+  tab
+}
+
+# Junta numa tabela só as linhas do modelo A e do modelo B (qualquer um pode faltar)
+tabela_ab <- function(mods_A = NULL, vars_A = MOSTRA_A, vcov_A = vcov_dk,
+                      mods_B = NULL, vars_B = MOSTRA_B, vcov_B = vcov_cluster) {
+  partes <- list()
+  if (!is.null(mods_A)) partes$A <- marca_modelo(tabela_regressao(mods_A, vars = vars_A, vcov_fun = vcov_A), "A")
+  if (!is.null(mods_B)) partes$B <- marca_modelo(tabela_regressao(mods_B, vars = vars_B, vcov_fun = vcov_B), "B")
+  tab <- bind_rows(partes)
+  tab[is.na(tab)] <- ""
+  tab
+}
+
+NOTA_AB <- paste("Modelo A: efeito fixo de município, erros-padrão de Driscoll-Kraay.",
+                 "Modelo B: efeitos fixos de município e de ano, erros-padrão agrupados por município.",
+                 "Erros-padrão entre parênteses. *** p<0,01; ** p<0,05; * p<0,1.")
+
+roda_teste <- function(codigo, titulo, tab, nota = NOTA_AB) {
   message("Robustez ", codigo, ": ", titulo)
-  tab <- tabela_regressao(modelos, vars = vars, vcov_fun = vcov_fun)
   salva_tabela(tab, paste0("robustez_", codigo),
                titulo = paste0("Robustez ", codigo, " — ", titulo), nota = nota)
   invisible(tab)
 }
 
-X <- c(INTERESSE, CONTROLES)
-
-# R1 — coalizões sem fusões
-x_r1 <- c("ano_eleitoral", "coalizao_gov_sem_fusao", "coalizao_pres_sem_fusao", CONTROLES)
+# ------------------------------------------------------------------------------
+# Testes
+# ------------------------------------------------------------------------------
+# R1 — coalizões sem fusões (nos dois modelos)
+sem_fusao <- c("coalizao_gov_sem_fusao", "coalizao_pres_sem_fusao")
+x_a1 <- c("ano_eleitoral", "pre_eleitoral", "pandemia_2020", sem_fusao, CONTROLES)
+x_b1 <- c(sem_fusao, CONTROLES_B)
 roda_teste("R1", "coalizões sem fusões de partidos",
-           estima_todas(base, x_r1), c("ano_eleitoral", "coalizao_gov_sem_fusao", "coalizao_pres_sem_fusao"))
+           tabela_ab(estima_A(base, x_a1), mods_B = estima_B(base, x_b1), vars_B = sem_fusao))
 
 # R2 — sem suplementares
 base_r2 <- base |> filter(coalesce(prefeito_suplementar, 0) == 0, coalesce(governador_suplementar, 0) == 0)
 roda_teste("R2", "sem prefeitos/governadores de eleição suplementar",
-           estima_todas(base_r2, X), INTERESSE)
+           tabela_ab(estima_A(base_r2), mods_B = estima_B(base_r2)))
 
 # R3 — dependente em log
 roda_teste("R3", "variável dependente em log",
-           estima_todas(base, X, prefixo_y = "ln_"), INTERESSE)
+           tabela_ab(estima_A(base, prefixo_y = "ln_"), mods_B = estima_B(base, prefixo_y = "ln_")))
 
 # R4 — participação na despesa total (%), sem a própria despesa total
+deps_part <- setdiff(DEPENDENTES, "despesa_total")
 roda_teste("R4", "participação na despesa total (%)",
-           estima_todas(base, X, sufixo_y = "_part", dependentes = setdiff(DEPENDENTES, "despesa_total")),
-           INTERESSE)
+           tabela_ab(estima_A(base, sufixo_y = "_part", dependentes = deps_part),
+                     mods_B = estima_B(base, sufixo_y = "_part", dependentes = deps_part)))
 
-# R5 — inclui ano pré-eleitoral
-roda_teste("R5", "inclui ano pré-eleitoral",
-           estima_todas(base, c("pre_eleitoral", X)), c("pre_eleitoral", INTERESSE))
+# R5 — especificação de Sakurai (2009): modelo A sem pré-eleitoral e sem
+# pandemia, erro agrupado por município (só modelo A)
+roda_teste("R5", "especificação de Sakurai (sem pré-eleitoral e sem pandemia, erro agrupado)",
+           tabela_ab(estima_A(base, c(INTERESSE, CONTROLES)), vars_A = INTERESSE, vcov_A = vcov_cluster),
+           nota = paste("Só modelo A: efeito fixo de município, sem ano pré-eleitoral e sem pandemia.",
+                        NOTA_EP))
 
-# R6 — inclui segundo mandato
+# R6 — inclui segundo mandato (nos dois modelos)
 roda_teste("R6", "inclui prefeito em segundo mandato",
-           estima_todas(base, c(X, "segundo_mandato")), c(INTERESSE, "segundo_mandato"))
+           tabela_ab(estima_A(base, c(X_A, "segundo_mandato")), vars_A = c(MOSTRA_A, "segundo_mandato"),
+                     mods_B = estima_B(base, c(X_B, "segundo_mandato")), vars_B = c(MOSTRA_B, "segundo_mandato")))
 
-# R7 — PIB municipal per capita, 2013-2023 (o IBGE ainda não publicou 2024-2025)
-x_r7 <- c(setdiff(X, "pib_nacional_tri"), "ln_pib_mun_pc")
+# R7 — PIB municipal per capita, 2013-2023 (o IBGE ainda não publicou 2024-2025).
+# Modelo A: no lugar do PIB nacional. Modelo B: somado aos controles (o PIB
+# nacional já está absorvido pelo efeito de ano).
+base_r7 <- base |> filter(ano <= 2023)
+x_a7 <- c(setdiff(X_A, "pib_nacional_tri"), "ln_pib_mun_pc")
+x_b7 <- c(X_B, "ln_pib_mun_pc")
 roda_teste("R7", "PIB municipal per capita (2013-2023)",
-           estima_todas(base |> filter(ano <= 2023), x_r7), c(INTERESSE, "ln_pib_mun_pc"))
+           tabela_ab(estima_A(base_r7, x_a7), vars_A = c(MOSTRA_A, "ln_pib_mun_pc"),
+                     mods_B = estima_B(base_r7, x_b7)))
 
 # R8 — Assistência + Previdência, como Sakurai
 roda_teste("R8", "Assistência e Previdência somadas (Sakurai, 2009)",
-           estima_todas(base, X, dependentes = "assist_previdencia"), INTERESSE)
+           tabela_ab(estima_A(base, dependentes = "assist_previdencia"),
+                     mods_B = estima_B(base, dependentes = "assist_previdencia")))
 
 # R9 — só municípios que informam a função em todos os anos em que aparecem
 # (a base tem uma linha por município-ano presente no Siconfi)
-modelos_r9 <- list()
+modelos_r9_A <- list()
+modelos_r9_B <- list()
 for (v in c("transporte", "agricultura", "comunicacoes")) {
   base_v <- base |>
     group_by(id_municipio) |>
     filter(all(!is.na(.data[[v]]) & .data[[v]] > 0)) |>
     ungroup()
   message("R9 ", v, ": ", n_distinct(base_v$id_municipio), " municípios")
-  modelos_r9 <- c(modelos_r9, estima_todas(base_v, X, dependentes = v))
+  modelos_r9_A <- c(modelos_r9_A, estima_A(base_v, dependentes = v))
+  modelos_r9_B <- c(modelos_r9_B, estima_B(base_v, dependentes = v))
 }
 roda_teste("R9", "só municípios que informam a função em todos os anos",
-           modelos_r9, INTERESSE)
+           tabela_ab(modelos_r9_A, mods_B = modelos_r9_B))
 
 # R10 — sem limpeza: base inteira (com os outliers de despesa) e receita
 # tributária original (receita_tributaria_real_pc_bruta)
 base_r10 <- carrega_base(limpa = FALSE) |>
   mutate(receita_tributaria_real_pc = receita_tributaria_real_pc_bruta)
 roda_teste("R10", "sem limpeza (outliers de despesa e receita original)",
-           estima_todas(base_r10, X), INTERESSE)
+           tabela_ab(estima_A(base_r10), mods_B = estima_B(base_r10)))
 
 # R11 — winsorização: base inteira (receita já corrigida); em cada ano, cada
 # dependente per capita é limitada aos percentis 1 e 99 daquele ano
@@ -118,34 +169,23 @@ base_r11 <- carrega_base(limpa = FALSE) |>
   mutate(across(all_of(paste0(DEPENDENTES, "_pc")), limita_p1_p99)) |>
   ungroup()
 roda_teste("R11", "dependentes winsorizadas nos percentis 1 e 99 de cada ano",
-           estima_todas(base_r11, X), INTERESSE)
+           tabela_ab(estima_A(base_r11), mods_B = estima_B(base_r11)))
 
-# R12 — mesmos modelos do principal, com erro-padrão de Driscoll-Kraay
-# (robusto a correlação entre municípios no mesmo ano e a autocorrelação)
-vcov_dk <- function(m) plm::vcovSCC(m, type = "HC1")
-roda_teste("R12", "erro-padrão de Driscoll-Kraay",
-           estima_todas(base, X), INTERESSE, vcov_fun = vcov_dk,
-           nota = paste("Erros-padrão de Driscoll-Kraay entre parênteses.",
-                        "*** p<0,01; ** p<0,05; * p<0,1."))
+# R12 — modelo A com erro-padrão agrupado por município (só modelo A)
+roda_teste("R12", "modelo A com erro-padrão agrupado por município",
+           tabela_ab(estima_A(base), vcov_A = vcov_cluster),
+           nota = paste("Só modelo A: efeito fixo de município.", NOTA_EP))
 
-# R13 — efeitos fixos de município e de ano (twoways). O efeito de ano absorve
-# tudo o que só varia no tempo, então saem ano eleitoral, PIB nacional e
-# tendências (colineares com ele). Mostra só as coalizões.
-x_r13 <- c("coalizao_gov", "coalizao_pres", "receita_tributaria_real_pc",
-           "transf_correntes_real_pc", "perc_jovens", "perc_idosos",
-           "grau_urb", "ln_populacao")
-pbase <- pdata.frame(base, index = c("id_municipio", "ano"))
-modelos_r13 <- list()
-for (v in DEPENDENTES) {
-  modelos_r13[[rotulo(v)]] <- plm(monta_formula(paste0(v, "_pc"), x_r13), data = pbase,
-                                  model = "within", effect = "twoways")
-}
-roda_teste("R13", "efeitos fixos de município e de ano",
-           modelos_r13, c("coalizao_gov", "coalizao_pres"))
+# R13 — modelo B com erro-padrão de Driscoll-Kraay (só modelo B)
+roda_teste("R13", "modelo B com erro-padrão de Driscoll-Kraay",
+           tabela_ab(mods_B = estima_B(base), vcov_B = vcov_dk),
+           nota = paste("Só modelo B: efeitos fixos de município e de ano.",
+                        "Erros-padrão de Driscoll-Kraay entre parênteses. *** p<0,01; ** p<0,05; * p<0,1."))
 
-# R14 — modelo principal + dummy de pandemia (ano de 2020)
-base_r14 <- base |> mutate(pandemia_2020 = as.integer(ano == 2020))
-roda_teste("R14", "inclui dummy de pandemia (2020)",
-           estima_todas(base_r14, c(X, "pandemia_2020")), c(INTERESSE, "pandemia_2020"))
+# R14 — modelo A sem a dummy de pandemia (só modelo A)
+roda_teste("R14", "modelo A sem a dummy de pandemia",
+           tabela_ab(estima_A(base, setdiff(X_A, "pandemia_2020"))),
+           nota = paste("Só modelo A: efeito fixo de município, sem a dummy de pandemia.",
+                        "Erros-padrão de Driscoll-Kraay entre parênteses. *** p<0,01; ** p<0,05; * p<0,1."))
 
 message("Testes de robustez concluídos.")

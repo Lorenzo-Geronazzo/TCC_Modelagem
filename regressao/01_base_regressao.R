@@ -101,6 +101,7 @@ base <- base |>
     # Calendário eleitoral
     ano_eleitoral = as.integer(ano %in% ANOS_ELEITORAIS),
     pre_eleitoral = as.integer(ano %in% ANOS_PRE_ELEITORAIS),
+    pandemia_2020 = as.integer(ano == 2020),   # ano da pandemia (também ano eleitoral)
     # Tendências (2013 = 1), como Sakurai (2009)
     tendencia  = ano - 2012,
     tendencia2 = tendencia^2,

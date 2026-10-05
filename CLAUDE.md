@@ -103,12 +103,19 @@ Diferenças em relação ao Sakurai a declarar na metodologia: deflator IPCA (el
 
 Regra de montagem dos grupos (`01_base_regressao.R`): soma das funções do grupo que o município informou; se nenhuma função do grupo aparece no município-ano, o grupo fica vazio (NA), não zero. Despesa total = soma de todas as funções informadas. Forma principal: per capita em nível (R$ de 2025 por habitante), como Sakurai. Também gera `ln_<var>_pc` (log; zero ou negativo vira NA) e `<grupo>_part` (% da despesa total), usados na robustez. Robustez extra: `assist_previdencia` = 3.08.000 + 3.09.000 (agrupamento do Sakurai).
 
-## Variáveis explicativas (decidido)
-- Interesse: `ano_eleitoral` (= 1 em 2016, 2020 e 2024; só 3 anos eleitorais na amostra), `coalizao_gov` e `coalizao_pres` (prefeito do partido do governador/presidente ou da coligação deles; versão principal com fusões).
-- Controles: `receita_tributaria_real_pc`, `transf_correntes_real_pc`, `perc_jovens`, `perc_idosos`, `grau_urb`, `ln_populacao`, `pib_nacional_tri` (= `pib_nacional_real` / 1e12, PIB nacional real em R$ trilhões, só para o coeficiente ter uma escala legível), `tendencia` (= ano − 2012, então 2013 = 1) e `tendencia2` (quadrado).
-- Só na robustez: `pre_eleitoral` (2015, 2019, 2023), `segundo_mandato`, `coalizao_gov_sem_fusao`/`coalizao_pres_sem_fusao`, `ln_pib_mun_pc` (PIB municipal real per capita em log, só até 2023).
+## Variáveis explicativas e especificação: modelos A e B (DECIDIDO)
+**Motivo da reestruturação:** os testes R12 (erro-padrão de Driscoll-Kraay) e R13 (efeitos fixos de município e de ano) da versão anterior mostraram que (i) o ano eleitoral, igual para todos os municípios no ano, precisa de erro-padrão robusto a choques comuns, e (ii) a coalizão presidencial sem efeito de ano confunde alinhamento com período. Por isso a análise passou a ter dois modelos principais, cada um com as 9 dependentes.
+- **Modelo A ("ciclo eleitoral")**: efeito fixo de município (`within`, `effect = "individual"`), `INTERESSE_A` + `CONTROLES`, erro-padrão de **Driscoll-Kraay** (`vcov_dk <- function(m) plm::vcovSCC(m, type = "HC1")`). Tabela `regressao_principal_A` (todas as variáveis).
+  - `INTERESSE_A`: `ano_eleitoral` (= 1 em 2016, 2020 e 2024), `pre_eleitoral` (= 1 em 2015, 2019, 2023), `pandemia_2020` (= 1 em 2020, criada no `01_base_regressao.R`), `coalizao_gov`, `coalizao_pres`.
+  - `CONTROLES`: `receita_tributaria_real_pc`, `transf_correntes_real_pc`, `perc_jovens`, `perc_idosos`, `grau_urb`, `ln_populacao`, `pib_nacional_tri` (= `pib_nacional_real` / 1e12, R$ trilhões), `tendencia` (= ano − 2012) e `tendencia2`.
+- **Modelo B ("coalizões")**: efeitos fixos de município e de ano (`effect = "twoways"`), `coalizao_gov` + `coalizao_pres` (`INTERESSE_B`) + `CONTROLES_B`, erro-padrão **agrupado por município**. Tabela `regressao_principal_B`.
+  - `CONTROLES_B` (só os que variam entre municípios): `receita_tributaria_real_pc`, `transf_correntes_real_pc`, `perc_jovens`, `perc_idosos`, `grau_urb`, `ln_populacao`. Ano eleitoral, pré-eleitoral, pandemia, PIB nacional e tendências saem (colineares com o efeito de ano).
+- Leitura dos coeficientes: ano eleitoral e pré-eleitoral vêm do modelo A; coalizões vêm do modelo B.
+- `INTERESSE` antigo (`ano_eleitoral`, `coalizao_gov`, `coalizao_pres`) continua no `00_configuracao.R`: é a especificação de Sakurai (2009), usada nas descritivas e no teste R5.
+- Rótulos novos: `pre_eleitoral` = "Ano pré-eleitoral", `pandemia_2020` = "Pandemia (2020)".
+- Notas das tabelas: `NOTA_A` (efeito fixo de município, Driscoll-Kraay) e `NOTA_B` (efeitos fixos de município e de ano, agrupado por município), no `00_configuracao.R`.
+- Só na robustez: `segundo_mandato`, `coalizao_gov_sem_fusao`/`coalizao_pres_sem_fusao`, `ln_pib_mun_pc` (PIB municipal real per capita em log, só até 2023).
 - Ideologia do partido do prefeito: fora do modelo (decisão da autora). Sakurai usa; declarar como diferença/limitação.
-- Sem efeito fixo de ano (colinear com a dummy de ano eleitoral); o tempo entra pelas tendências e pelo PIB nacional.
 
 ## Regressão em R
 Scripts em `regressao/`, rodar na ordem (ou tudo pelo `rodar_tudo.R`):
@@ -116,30 +123,30 @@ Scripts em `regressao/`, rodar na ordem (ou tudo pelo `rodar_tudo.R`):
 - `01_base_regressao.R`: lê só as colunas necessárias do painel, soma as funções em grupos, junta os atributos do município-ano (para se um município-ano tiver atributos diferentes entre linhas), cria per capita, logs, participações, dummies de tempo e tendências; aplica as marcações de limpeza (ver "Limpeza da base"); imprime contagens e % de vazios; salva `dados/finais/base_regressao.rds`.
 - `01b_cobertura.R`: tabela de cobertura das funções e dos grupos (municípios que informam em todos os anos, em parte, com buraco, em nenhum; linhas com valor zero; municípios por ano). Base para a decisão de "A VER DEPOIS", item 1.
 - `02_descritivas.R`: tabelas descritivas (N, média, desvio-padrão, mínimo, máximo) das explicativas e das dependentes; gráfico da média anual de cada dependente per capita, em nível e em log, com faixas no ano eleitoral (laranja escuro) e pré-eleitoral (amarelo); painel com todas em log.
-- `03_hausman.R`: para cada dependente, efeitos fixos (`within`) × aleatórios; Hausman clássico (`phtest`) e robusto (Mundlak/Wooldridge: médias por município das variáveis que variam entre municípios, teste de Wald conjunto com erro-padrão agrupado). Tabela com o modelo indicado por cada teste.
-- `04_regressoes.R`: as 9 regressões principais (`MODELO <- "within"`; trocar para `"random"` se o Hausman indicar) e comparação pooled/FE/RE para a despesa total. Salva também `modelos_principais.rds`.
-- `05_robustez.R`: R1 coalizões sem fusões; R2 sem prefeito/governador de suplementar; R3 dependente em log; R4 participação na despesa total (%); R5 + pré-eleitoral; R6 + segundo mandato; R7 PIB municipal no lugar do nacional (2013-2023); R8 Assistência + Previdência; R9 Transporte, Agricultura e Comunicações só com os municípios que informam a função (valor > 0) em todos os anos em que aparecem na base; R10 sem limpeza (mantém `outlier_despesa = 1` e usa a receita tributária original, `receita_tributaria_real_pc_bruta`); R11 winsorização (base sem limpeza de despesa, receita já corrigida; cada dependente per capita limitada aos percentis 1 e 99 de cada ano); R12 erro-padrão de Driscoll-Kraay (`plm::vcovSCC(m, type = "HC1")`, mesmos modelos do principal; nota da tabela indica Driscoll-Kraay); R13 efeitos fixos de município e de ano (`effect = "twoways"`), sem ano eleitoral, PIB nacional e tendências (colineares com o efeito de ano), mostrando só `coalizao_gov` e `coalizao_pres`, erro-padrão agrupado por município; R14 modelo principal + `pandemia_2020` (= 1 em 2020, criada no 05, não no 01). Cada tabela mostra só os coeficientes de interesse.
+- `03_hausman.R`: para cada dependente, com a especificação do modelo A (`INTERESSE_A` + `CONTROLES`), efeitos fixos (`within`) × aleatórios; Hausman clássico (`phtest`) e robusto (Mundlak/Wooldridge: médias por município das variáveis que variam entre municípios, teste de Wald conjunto com erro-padrão agrupado). Tabela com o modelo indicado por cada teste.
+- `04_regressoes.R`: modelo A (`regressao_principal_A`, erro Driscoll-Kraay) e modelo B (`regressao_principal_B`, efeitos fixos de município e de ano, erro agrupado), 9 dependentes cada; comparação pooled/FE/RE da despesa total com a especificação do modelo A e erro Driscoll-Kraay. Salva `modelos_principais.rds` (lista com A e B).
+- `05_robustez.R`: cada teste reestima o modelo A e/ou o modelo B mudando UMA coisa; cada tabela mostra `ano_eleitoral` e `pre_eleitoral` do modelo A (erro Driscoll-Kraay) e `coalizao_gov` e `coalizao_pres` do modelo B (erro agrupado), com "[modelo A]"/"[modelo B]" no nome de cada linha (inclusive Observações, Municípios e R²). R1 coalizões sem fusões (A e B); R2 sem prefeito/governador de suplementar (A e B); R3 dependente em log (A e B); R4 participação na despesa total, % (A e B); R5 especificação de Sakurai: modelo A sem `pre_eleitoral` e sem `pandemia_2020`, erro agrupado por município (só A; mostra `INTERESSE`); R6 + segundo mandato (A e B); R7 PIB municipal per capita, 2013-2023 (A: no lugar do PIB nacional; B: somado aos controles); R8 Assistência + Previdência (A e B); R9 Transporte, Agricultura e Comunicações só com municípios que informam a função (valor > 0) em todos os anos em que aparecem (A e B); R10 sem limpeza (mantém `outlier_despesa = 1` e usa `receita_tributaria_real_pc_bruta`) (A e B); R11 winsorização p1-p99 de cada ano (A e B); R12 modelo A com erro agrupado por município (só A); R13 modelo B com erro Driscoll-Kraay (só B); R14 modelo A sem a dummy de pandemia (só A).
 Decisões de estimação:
-- Erros-padrão agrupados por município (`vcovHC`, método Arellano, HC1) em todas as tabelas.
+- Erro-padrão: modelo A com Driscoll-Kraay (`vcov_dk`); modelo B com agrupado por município (`vcov_cluster`: `vcovHC`, método Arellano, HC1). `tabela_regressao(..., vcov_fun = )` escolhe.
 - Efeitos aleatórios com o método Wallace-Hussain (`random.method = "walhus"`). Motivo: com variáveis que só variam no tempo (ano eleitoral, tendências, PIB nacional), a regressão "between" do método padrão (Swamy-Arora) fica singular e o modelo não roda.
 - Hausman robusto implementado à mão (`hausman_mundlak`), porque `phtest(method = "aux")` ignora o `random.method` e falha. Validado em dados simulados: não rejeita sem correlação e rejeita com correlação induzida.
-- **DECISÃO: efeitos fixos (`within`) para as 9 dependentes.** O Hausman clássico e o robusto indicam efeitos fixos em todas (p < 0,05). `MODELO <- "within"` no 04 e no 05. Base limpa (`carrega_base()`).
+- **DECISÃO: efeitos fixos para as 9 dependentes.** Com a especificação do modelo A, o Hausman clássico e o robusto indicam efeitos fixos em todas (p < 0,05). Base limpa (`carrega_base()`).
 
-Teste de Hausman (`03_hausman.R` → `regressao/saidas/tabelas/hausman.csv`; observações e municípios do modelo de efeitos fixos; p-valor 0 = abaixo da precisão numérica do R):
+Teste de Hausman com a especificação do modelo A (`03_hausman.R` → `regressao/saidas/tabelas/hausman.csv`; observações e municípios do modelo de efeitos fixos; p-valor 0 = abaixo da precisão numérica do R):
 
 | Variável dependente | Hausman (χ²) | p-valor | Hausman robusto | p-valor (robusto) | Indicado (clássico) | Indicado (robusto) | Observações | Municípios |
 |---|---|---|---|---|---|---|---|---|
-| Despesa total | 3.658,36 | 0 | 263,51 | 2,34e-52 | Efeitos fixos | Efeitos fixos | 70.669 | 5.568 |
-| Saúde e Saneamento | 2.236,09 | 0 | 370,81 | 3,26e-75 | Efeitos fixos | Efeitos fixos | 70.526 | 5.568 |
-| Educação e Cultura | 4.088,46 | 0 | 1.197,95 | 2,66e-253 | Efeitos fixos | Efeitos fixos | 70.550 | 5.568 |
-| Habitação e Urbanismo | 165,51 | 3,95e-29 | 41,91 | 1,41e-06 | Efeitos fixos | Efeitos fixos | 69.574 | 5.564 |
-| Assistência Social | 8.895,14 | 0 | 144,98 | 2,18e-27 | Efeitos fixos | Efeitos fixos | 70.485 | 5.568 |
-| Transporte | 1.019,11 | 1,46e-210 | 319,29 | 3,21e-64 | Efeitos fixos | Efeitos fixos | 54.423 | 5.205 |
-| Administração | 1.236,12 | 2,88e-257 | 111,95 | 1,51e-20 | Efeitos fixos | Efeitos fixos | 70.553 | 5.568 |
-| Agricultura | 851,56 | 1,44e-174 | 267,87 | 2,79e-53 | Efeitos fixos | Efeitos fixos | 64.464 | 5.436 |
-| Comunicações | 173,55 | 8,96e-31 | 35,26 | 2,40e-05 | Efeitos fixos | Efeitos fixos | 12.360 | 1.896 |
+| Despesa total | 3.569,66 | 0 | 248,73 | 3,20e-49 | Efeitos fixos | Efeitos fixos | 70.669 | 5.568 |
+| Saúde e Saneamento | 2.290,43 | 0 | 383,31 | 6,96e-78 | Efeitos fixos | Efeitos fixos | 70.526 | 5.568 |
+| Educação e Cultura | 4.261,10 | 0 | 1.217,01 | 2,03e-257 | Efeitos fixos | Efeitos fixos | 70.550 | 5.568 |
+| Habitação e Urbanismo | 172,41 | 2,23e-29 | 42,65 | 1,02e-06 | Efeitos fixos | Efeitos fixos | 69.574 | 5.564 |
+| Assistência Social | 3.132,51 | 0 | 142,28 | 7,94e-27 | Efeitos fixos | Efeitos fixos | 70.485 | 5.568 |
+| Transporte | 1.019,79 | 8,86e-209 | 319,62 | 2,73e-64 | Efeitos fixos | Efeitos fixos | 54.423 | 5.205 |
+| Administração | 1.116,60 | 1,45e-229 | 109,27 | 5,38e-20 | Efeitos fixos | Efeitos fixos | 70.553 | 5.568 |
+| Agricultura | 852,10 | 7,85e-173 | 267,87 | 2,79e-53 | Efeitos fixos | Efeitos fixos | 64.464 | 5.436 |
+| Comunicações | 148,78 | 1,26e-24 | 35,64 | 2,04e-05 | Efeitos fixos | Efeitos fixos | 12.360 | 1.896 |
 
-- Rodado na base real: 02 (descritivas), 03 (Hausman, ~14 s), 04 (regressões principais e comparação pooled/FE/RE, ~15 s) e 05 (robustez R1-R14, ~107 s). Tabelas em `regressao/saidas/tabelas/robustez_R1` a `robustez_R14` (.csv e .docx).
+- Rodado na base real com os modelos A e B: 01 (24 s), 03 Hausman (38 s), 04 modelos A e B + comparação (281 s) e 05 robustez R1-R14 (1.491 s); total ~30 min. O modelo B (`effect = "twoways"`) é o mais lento no `plm`. Tabelas em `regressao/saidas/tabelas/`: `hausman`, `regressao_principal_A`, `regressao_principal_B`, `comparacao_estimadores_despesa_total`, `robustez_R1` a `robustez_R14` (.csv e .docx).
 - Formatação das tabelas (`tabela_regressao()` no 00): coeficientes, erros-padrão e R² com vírgula decimal (`formatC(..., format = "f", decimal.mark = ",")`, ex.: 203,869); ponto de milhar só em Observações/Municípios. Argumento `vcov_fun` (padrão `vcov_cluster`) escolhe a matriz de variância; `roda_teste()` no 05 aceita `vcov_fun` e `nota`.
 
 ## Cobertura das funções e ausências (RESOLVIDO; antigo "A VER DEPOIS", item 1)

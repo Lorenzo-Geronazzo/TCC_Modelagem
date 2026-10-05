@@ -15,14 +15,14 @@ pbase <- pdata.frame(base, index = c("id_municipio", "ano"))
 resultados <- list()
 for (v in DEPENDENTES) {
   y <- paste0(v, "_pc")
-  f <- monta_formula(y, c(INTERESSE, CONTROLES))
+  f <- monta_formula(y, c(INTERESSE_A, CONTROLES))   # modelo A
   message("Hausman: ", rotulo(v))
 
   fe <- plm(f, data = pbase, model = "within")
   re <- plm(f, data = pbase, model = "random", random.method = METODO_RE)
   h_classico <- phtest(fe, re)
   h_robusto  <- tryCatch(
-    hausman_mundlak(base, y, c(INTERESSE, CONTROLES)),
+    hausman_mundlak(base, y, c(INTERESSE_A, CONTROLES)),
     error = function(e) { message("  Hausman robusto falhou: ", conditionMessage(e)); NULL }
   )
 
