@@ -123,7 +123,23 @@ Decisões de estimação:
 - Erros-padrão agrupados por município (`vcovHC`, método Arellano, HC1) em todas as tabelas.
 - Efeitos aleatórios com o método Wallace-Hussain (`random.method = "walhus"`). Motivo: com variáveis que só variam no tempo (ano eleitoral, tendências, PIB nacional), a regressão "between" do método padrão (Swamy-Arora) fica singular e o modelo não roda.
 - Hausman robusto implementado à mão (`hausman_mundlak`), porque `phtest(method = "aux")` ignora o `random.method` e falha. Validado em dados simulados: não rejeita sem correlação e rejeita com correlação induzida.
-- Testado só em painel simulado; ainda não rodado na base real.
+- **DECISÃO: efeitos fixos (`within`) para as 9 dependentes.** O Hausman clássico e o robusto indicam efeitos fixos em todas (p < 0,05). `MODELO <- "within"` no 04 e no 05. Base limpa (`carrega_base()`).
+
+Teste de Hausman (`03_hausman.R` → `regressao/saidas/tabelas/hausman.csv`; observações e municípios do modelo de efeitos fixos; p-valor 0 = abaixo da precisão numérica do R):
+
+| Variável dependente | Hausman (χ²) | p-valor | Hausman robusto | p-valor (robusto) | Indicado (clássico) | Indicado (robusto) | Observações | Municípios |
+|---|---|---|---|---|---|---|---|---|
+| Despesa total | 3.658,36 | 0 | 263,51 | 2,34e-52 | Efeitos fixos | Efeitos fixos | 70.669 | 5.568 |
+| Saúde e Saneamento | 2.236,09 | 0 | 370,81 | 3,26e-75 | Efeitos fixos | Efeitos fixos | 70.526 | 5.568 |
+| Educação e Cultura | 4.088,46 | 0 | 1.197,95 | 2,66e-253 | Efeitos fixos | Efeitos fixos | 70.550 | 5.568 |
+| Habitação e Urbanismo | 165,51 | 3,95e-29 | 41,91 | 1,41e-06 | Efeitos fixos | Efeitos fixos | 69.574 | 5.564 |
+| Assistência Social | 8.895,14 | 0 | 144,98 | 2,18e-27 | Efeitos fixos | Efeitos fixos | 70.485 | 5.568 |
+| Transporte | 1.019,11 | 1,46e-210 | 319,29 | 3,21e-64 | Efeitos fixos | Efeitos fixos | 54.423 | 5.205 |
+| Administração | 1.236,12 | 2,88e-257 | 111,95 | 1,51e-20 | Efeitos fixos | Efeitos fixos | 70.553 | 5.568 |
+| Agricultura | 851,56 | 1,44e-174 | 267,87 | 2,79e-53 | Efeitos fixos | Efeitos fixos | 64.464 | 5.436 |
+| Comunicações | 173,55 | 8,96e-31 | 35,26 | 2,40e-05 | Efeitos fixos | Efeitos fixos | 12.360 | 1.896 |
+
+- Rodado na base real: 02 (descritivas), 03 (Hausman, ~14 s) e 04 (regressões principais e comparação pooled/FE/RE, ~15 s). 05 (robustez) ainda não rodado.
 
 ## Cobertura das funções e ausências (RESOLVIDO; antigo "A VER DEPOIS", item 1)
 **Ausência ≠ zero.** A classificação por função/subfunção é feita pela prefeitura; um gasto pode estar lançado em outra conta (ex.: publicidade em Administração Geral 04.122/04.999 ou dentro da própria área). Não preencher automaticamente com 0.
@@ -183,7 +199,7 @@ Feita no `01_base_regressao.R` (etapa 5b). A base salva NÃO apaga linhas nem va
 
 ## Pendências
 Cobertura temporal: PIB municipal só até 2023 (por isso entra só na robustez R7; o PIB nacional cobre 2013-2025). Siconfi 2025 tem menos municípios (~5.440 contra ~5.550). Receitas têm queda de cobertura em 2014 (~5.180 municípios). População 2024-25 já corrigida (ver IBGE anual).
-- Rodar os scripts de R na base real (até agora só testados em painel simulado) e conferir as contagens e os % de vazios que o `01` imprime.
+- Rodar o `05_robustez.R` na base real (01, 01b, 02, 03 e 04 já rodados).
 - 49 municípios sem prefeito eleito em 2024 (provavelmente eleição anulada sem suplementar na base): documentar como limitação.
 - Despesas por função no corpo do trabalho; investimentos (Anexo 2, natureza da despesa, municipio_despesas_orcamentarias) ficam como robustez.
 Variáveis do Censo não variam o suficiente para sobreviver a efeitos fixos de município. Úteis para descritivas e heterogeneidade.

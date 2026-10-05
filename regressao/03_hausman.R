@@ -35,6 +35,9 @@ for (v in DEPENDENTES) {
     `Indicado (clássico)`  = ifelse(h_classico$p.value < 0.05, "Efeitos fixos", "Efeitos aleatórios"),
     `Indicado (robusto)`   = if (is.null(h_robusto)) NA else
                                ifelse(h_robusto$p.value < 0.05, "Efeitos fixos", "Efeitos aleatórios"),
+    # Tamanho da amostra do modelo de efeitos fixos (município-anos e municípios)
+    `Observações`          = nobs(fe),
+    `Municípios`           = pdim(fe)$nT$n,
     check.names = FALSE
   )
 }
