@@ -1,29 +1,76 @@
-Contexto do projeto: TCC em Ciências Econômicas (UFPR)
-Tema
+# Contexto do projeto: TCC em Ciências Econômicas (UFPR)
 
-Ciclos Políticos Orçamentários e finanças municipais no Brasil. Analisa como as despesas dos municípios respondem ao ciclo eleitoral e ao alinhamento político do prefeito com governador e presidente. Metodologia: regressão de efeitos fixos em painel município-ano. Referência de controles: Sakurai (2009): receita tributária e receita de transferências correntes.
+## Tema
+Ciclos Políticos Orçamentários e finanças municipais no Brasil. Analisa como as despesas dos municípios respondem ao ciclo eleitoral e ao alinhamento político do prefeito com governador e presidente. Metodologia: painel município-ano seguindo Sakurai (2009): estimar pooled, efeitos fixos e efeitos aleatórios, teste de Hausman (clássico e robusto) e reportar o modelo escolhido. Controles do Sakurai: receita tributária e receita de transferências correntes, demografia, população. Estimação em R (`arrow::read_parquet`, `plm`, `fixest`, `modelsummary`).
 
-Arquivos
-main_code.py: pipeline em células (# %%) que gera painel_final_eleicoes.parquet e .csv.
-Código de receitas (exploração + download): Célula 1 gera catalogo_receitas.parquet/.xlsx; Célula 2 gera base_siconfi_receitas.parquet e receitas_municipio_ano.parquet/.csv; Célula 3 (celula3_merge_receitas.py) junta ao painel e salva painel_final_eleicoes_receitas.parquet.
-teste_todas_maes.py: teste de hierarquia de contas de receita (mãe = soma das filhas), por município-ano.
-Caches locais em parquet (delete o arquivo para forçar novo download quando a query mudar): base_siconfi_despesas.parquet, base_prefeitos.parquet, base_gov_pres.parquet, base_ibge_anual.parquet, catalogo_receitas.parquet, base_siconfi_receitas.parquet, teste_todas_maes.parquet, contribuicao_melhoria_v2.parquet, transferencias_filhas.parquet.
-CSVs do SIDRA/IBGE (Censo): tabela9923.csv (urbanização 2022), tabela202.csv (urbanização 2010), tabela9514.csv (idade 2022), tabela200.csv (idade 2010).
-Fonte principal: Base dos Dados (BigQuery), projeto de cobrança monografia-508123.
-Pipeline atual
-Siconfi despesas: br_me_siconfi.municipio_despesas_funcao (Anexo 1-E), estágio "Despesas Pagas", Brasil inteiro (sem filtro de região). Remove conta_bd == 'Despesas Intraorçamentárias'.
-Prefeitos: br_tse_eleicoes.resultados_candidato, cargo prefeito, resultado = 'eleito', anos 2008 a 2024. Chave de reeleição: titulo_eleitoral_candidato com shift(1) por município gera segundo_mandato. Eleição de 2008 só serve de âncora para 2012. Mapeamento ano financeiro para eleição: 2013-16 usa 2012, 2017-20 usa 2016, 2021-24 usa 2020, 2025 usa 2024.
-Governador/Presidente: resultados_candidato JOIN partidos (coligação em composicao_coligacao), com IFNULL(sigla_uf,'BR') no join para o presidente. Mapeamento: 2013-14 usa 2010, 2015-18 usa 2014, 2019-22 usa 2018, 2023-25 usa 2022. Dummies coalizao_gov e coalizao_pres via verifica_alianca (separa a coligação por "/" e compara sigla exata).
+## Estado atual da base (leia primeiro)
+- **Base final: `dados/finais/painel_final_real.parquet`** (valores deflacionados, R$ de 2025). Não versionada no git (ver Estrutura de pastas); recriar rodando o pipeline.
+- Ordem de execução (rodar tudo de novo quando uma etapa anterior mudar):
+  1. `codigo/main_code.py` → `dados/finais/painel_final_eleicoes.parquet`.
+  2. `codigo/explora_receitas.py`, Células 2 e 3 → `dados/finais/receitas_municipio_ano.parquet` e `dados/finais/painel_final_eleicoes_receitas.parquet` (Célula 1 = catálogo, só exploração).
+  3. `codigo/explora_receitas.py`, Célula 4 (deflação) → `dados/finais/painel_final_real.parquet`.
+- Formato: uma linha por município × ano × conta de despesa (inclui total, funções e subfunções). Para as variáveis dependentes usar só `id_conta_bd` no formato `3.FF.000` (ver seção Variáveis dependentes) e pivotar no R para uma linha por município-ano.
+
+## Estrutura de pastas
+- `codigo/`: pipeline. `main_code.py`, `explora_receitas.py` e **`caminhos.py`** (todos os caminhos de arquivo, a partir da raiz do projeto).
+- `codigo/exploracao/`: testes e explorações fora do pipeline: `exploracao_contas_despesas.py`, `teste_mae_filho.py`, `teste_nomemclatura_partidos.py`.
+- `dados/externos/`: CSVs do SIDRA/IBGE baixados à mão (Censo): tabela9923.csv (urbanização 2022), tabela202.csv (urbanização 2010), tabela9514.csv (idade 2022), tabela200.csv (idade 2010).
+- `dados/cache/`: caches das consultas (apague o arquivo para forçar novo download quando a query mudar). Pipeline: base_siconfi_despesas.parquet, base_prefeitos_v3.parquet, base_gov_pres_v2.parquet, base_gov_pres_2010.parquet, base_ibge_anual.parquet, catalogo_receitas.parquet, base_siconfi_receitas.parquet, ipca_mensal.csv. Testes de receita (teste_mae_filho.py): teste_todas_maes.parquet, contribuicao_melhoria_v2.parquet, transferencias_filhas.parquet.
+- `dados/finais/`: painel_final_eleicoes.parquet, painel_final_eleicoes_receitas.parquet, painel_final_real.parquet, receitas_municipio_ano.parquet/.csv.
+- `saidas/exploracao/`: xlsx e csv de testes (catalogo_receitas.xlsx, catalogo_contas_despesas.xlsx, nao_batem_todas_maes.csv, resumo_todas_maes.csv, transf_nao_batem.csv, trib_ainda_nao_batem.csv).
+- `backups/`: cópias "antes" de mudanças de regra (dummies_coalizao_antes.parquet, segundo_mandato_antes.parquet, coalizao_gov_antes_tse_ordinaria.parquet).
+- `obsoletos/`: caches que não são mais usados (base_prefeitos.parquet, base_prefeitos_v2.parquet, base_gov_pres.parquet).
+- `referencia/br_me_siconfi/`: código do pipeline da própria Base dos Dados que baixa o Siconfi (Prefect). Só referência; nenhum script nosso usa.
+- `regressao/`: scripts de R (vazia por enquanto).
+- Como os scripts acham os arquivos: cada script procura a pasta `codigo/` subindo a partir da pasta atual e importa as constantes de `caminhos.py` (ex.: `PAINEL_FINAL_REAL`, `CACHE`). Funciona no terminal na raiz (`python codigo/main_code.py`) e nas células do VS Code (que rodam na pasta do script). Para mudar um arquivo de lugar, mudar só `caminhos.py`. Nunca escrever nome de arquivo solto nos scripts.
+- Git: os .parquet são versionados via Git LFS (`.gitattributes`), exceto os painéis grandes `dados/finais/painel_final_*.parquet` (77 a 240 MB), que estão no `.gitignore` e saíram do rastreio (versões antigas continuam no histórico/LFS do GitHub). Reorganização conferida: depois de mover, o pipeline rodou só com caches (download bloqueado) e `painel_final_real.parquet` saiu idêntico ao anterior (3.281.067 × 48, `assert_frame_equal`).
+- Fonte principal: Base dos Dados (BigQuery), projeto de cobrança monografia-508123.
+
+## Arquivos
+- `codigo/main_code.py`: pipeline em células (`# %%`) que gera `painel_final_eleicoes.parquet` (só parquet; não gera .csv).
+- `codigo/explora_receitas.py`: Célula 1 gera `catalogo_receitas.parquet`/`.xlsx`; Célula 2 gera `base_siconfi_receitas.parquet` e `receitas_municipio_ano.parquet`/`.csv`; Célula 3 junta ao painel (`painel_final_eleicoes_receitas.parquet`); Célula 4 deflaciona (`ipca_mensal.csv`, `painel_final_real.parquet`).
+- `codigo/exploracao/exploracao_contas_despesas.py` → `catalogo_contas_despesas.xlsx` (árvore das contas de despesa; só exploração).
+- `codigo/exploracao/teste_mae_filho.py`: teste de hierarquia das contas de receita (mãe = soma das filhas), por município-ano; gera teste_todas_maes.parquet e os csv de conferência. Validação, fora do pipeline. (Não existe `teste_todas_maes.py`; o nome antigo era citado por engano.)
+- `codigo/exploracao/teste_nomemclatura_partidos.py`: inspeção das siglas nos caches antigos (obsoletos/). Tem um erro antigo, anterior à reorganização: usa a coluna `ano`, mas a base de prefeitos tem `ano_eleicao_municipal` (KeyError).
+
+## Pipeline
+Siconfi despesas: br_me_siconfi.municipio_despesas_funcao (Anexo 1-E), estágio "Despesas Pagas", Brasil inteiro (sem filtro de região). Remove as despesas intraorçamentárias. Elas não têm código (id_conta_bd e portaria vazios), só aparecem como linha de total, e o nome muda: "Despesas (Intra-Orçamentárias)" em 2013 e "Despesas Intraorçamentárias" de 2014 em diante. Filtro: conta_bd sem acento e em minúsculas contém "intra" e não contém "exceto" (as linhas "Despesas Exceto Intraorçamentárias" são o total sem as intra e ficam). Remove 20.504 linhas (antes o filtro por nome exato tirava 19.530 e deixava as 974 de 2013).
+Prefeitos: br_tse_eleicoes.resultados_candidato, cargo prefeito, resultado = 'eleito', anos 2008 a 2024, com tipo_eleicao e data_eleicao (cache base_prefeitos_v3.parquet, que inclui também título, CPF e nome da tabela candidatos; base_prefeitos.parquet e base_prefeitos_v2.parquet não são mais usados). Eleição de 2008 só serve de âncora para 2012.
+Eleições suplementares: a Base dos Dados registra a suplementar sob o ano da ordinária (ex.: suplementar de fev/2023 com ano 2020). Cada município-eleição tem no máximo 1 ordinária + 0 a 2 suplementares (405 grupos com 1 suplementar, 5 com 2, 116 só com suplementar). Antes isso duplicava linhas do painel.
+Regra de um prefeito por município-ano: início do mandato = 1º/jan do ano seguinte (ordinária) ou data da eleição suplementar (aproximação da posse; nunca antes daquele 1º/jan). Em cada ano financeiro fica o último a assumir até 1º de julho (= quem governou a maior parte do ano quando há uma troca no ano). Se ninguém do mandato assumiu até 1º/jul (só houve suplementar depois), o município-ano fica sem prefeito: partido, segundo_mandato e as 4 dummies de coalizão ficam vazios (NaN), não 0 (214 município-anos; verifica_alianca devolve NaN quando falta partido ou coligação). Coluna prefeito_suplementar = 1 quando o prefeito do ano veio de suplementar (útil para robustez). Limitação: se o eleito na ordinária foi afastado muito antes da suplementar, o período com prefeito interino é atribuído a ele.
+segundo_mandato = 1 se o prefeito do ano é a mesma pessoa que estava no cargo ao fim do mandato anterior (o último a assumir, ordinário ou tampão), olhando exatamente a eleição de 4 anos antes. Mesma pessoa = título igual OU CPF igual OU, só quando falta o título de um dos lados, nome padronizado igual (sem acento, maiúsculas, espaços simples); vazios nunca contam como iguais. Título = titulo_eleitoral_candidato de resultados_candidato, completado por candidatos.titulo_eleitoral quando nulo; CPF de candidatos.cpf. JOIN com candidatos por ano, id_municipio, cargo = 'prefeito' e sequencial = sequencial_candidato (não duplica: 28.185 eleitos antes e depois). Validação: nos pares com os dois identificadores, CPF e título concordam em 99,9% (5 casos com mesmo CPF e título diferente = título trocado, por isso o CPF entra); nome igual implica título igual em 99,7%. Efeito: 220 município-anos passaram de 0 para 1 (~25/ano em 2013-16, 20 em 2017-20, 8 em 2021-24, 4 em 2025), nenhum de 1 para 0. Cópia anterior: segundo_mandato_antes.parquet. Cache: base_prefeitos_v3.parquet. Substitui o shift(1), que com suplementares comparava linhas em ordem arbitrária. Mandato não consecutivo (ex.: cassado, tampão, volta) = 0. Mapeamento ano financeiro para eleição: 2013-16 usa 2012, 2017-20 usa 2016, 2021-24 usa 2020, 2025 usa 2024.
+Governador/Presidente: resultados_candidato JOIN partidos (coligação em composicao_coligacao), com IFNULL(sigla_uf,'BR') no join para o presidente, filtrando tipo_eleicao = 'eleicao ordinaria' (cache base_gov_pres_v2.parquet; base_gov_pres.parquet não é mais usado).
+MAX(composicao_coligacao) verificado: a tabela partidos só tem o 1º turno, então nunca há escolha entre turnos. Os únicos grupos com 2 textos eram AM e TO 2014, porque a Base dos Dados grava as suplementares de governador (AM 27/08/2017, TO 24/06/2018) sob o ano de 2014; o partido do vencedor da suplementar puxava a coligação que esse partido tinha em 2014. Em TO o MAX escolhia a chapa derrotada (Sandoval, "PRB / PP / ...") em vez da de Marcelo Miranda ("PMDB / PT / PSD / PV"); em AM acertava por acaso. Com o filtro de ordinária há 1 texto por ano/UF/cargo e o MAX é inofensivo. Efeito: só TO 2015-18 mudou em coalizao_gov (63-68 de 0→1 e 66-70 de 1→0 por ano, de ~135 municípios); nenhum outro estado mudou. Cópia anterior: coalizao_gov_antes_tse_ordinaria.parquet.
+governador_suplementar = 1 nos município-anos em que, pela regra de 1º de julho, o governador no cargo não era o eleito na ordinária: AM 2017 (Melo cassado pelo TSE em 04/05/2017; David Almeida interino de 09/05/2017) e AM 2018 (Amazonino Mendes, suplementar, posse em 04/10/2017); TO 2018 (Miranda cassado em 22/03/2018; Mauro Carlesse interino e eleito na suplementar de 24/06/2018). Datas conferidas em fontes externas (TSE, Agência Brasil, Conexão Tocantins). coalizao_gov continua usando a coligação da ordinária nesses anos; a coligação das suplementares não está na tabela partidos (exigiria arquivo do TSE de 2017/2018). Vices que assumem por renúncia/impeachment (ex.: RJ, Witzel → Cláudio Castro) não são marcados: são da mesma chapa eleita. Mapeamento: 2013-14 usa 2010, 2015-18 usa 2014, 2019-22 usa 2018, 2023-25 usa 2022. Dummies coalizao_gov e coalizao_pres via verifica_alianca (separa a coligação por "/" e compara sigla exata, depois de padronizar as siglas dos dois lados com padroniza_sigla). Versão de robustez: coalizao_gov_sem_fusao e coalizao_pres_sem_fusao (só renomeações, sem fusões/incorporações).
+Eleição de 2010 (resolvido): na Base dos Dados, a tabela partidos tem composicao_coligacao nula em 2010 e não tem presidente em 2010 (antes isso zerava as dummies de 2013-14). O main_code.py troca as linhas de 2010 por base_gov_pres_2010.parquet: partido eleito de resultados_candidato (presidente 2010 tem resultado nulo; eleito = mais votado no 2º turno, PT) + composição do arquivo oficial do TSE consulta_coligacao_2010 (cdn.tse.jus.br, arquivo _BRASIL.csv, latin1, mesmo formato "A / B"). Validação: para os 27 governadores, a composição do TSE é igual à reconstruída pela Base dos Dados juntando os partidos com o mesmo sequencial_coligacao (27/27).
+Padronização de siglas partidárias (main_code.py, Célula 3; fonte: TSE, "Fusões, incorporações e mudanças de nomenclatura"):
+Grafia: strip de espaços e dos parênteses das federações de 2022 (ex.: "(PT/PC do B/PV) / MDB" gerava "(PT" e "PV)", falso 0). Não há outras variações de grafia nos dados ("PC do B" e "PT do B" são escritos igual nas duas bases).
+(a) Renomeações, aplicadas sempre: PMDB→MDB, PTN→PODE, PT do B→AVANTE, PEN/PATRI→PATRIOTA, PSDC→DC, SD→SOLIDARIEDADE, PR→PL, PRB→REPUBLICANOS, PPS→CIDADANIA, PTC→AGIR, PMN→MOBILIZA.
+(b) Fusões/incorporações (decisão metodológica, usada na versão principal): PRP→PATRIOTA, PPL→PC do B, PHS→PODE (2019); DEM, PSL→UNIÃO (2022); PROS→SOLIDARIEDADE, PSC→PODE, PTB, PATRIOTA→PRD (2023). Só valem quando o ano da fusão cai entre as duas eleições comparadas (ano_min < ano_fusao <= ano_max). Se as duas eleições são anteriores à fusão, os partidos eram separados (ex.: prefeito DEM de 2016 x chapa PSL/PRTB de 2018 não é aliança). Aplicar a fusão sempre geraria falsos 1 (ex.: ~275 a 477 município-anos por ano em coalizao_pres 2019-22).
+Na base de prefeitos, a Base dos Dados já grava a eleição de 2016 com as siglas novas (MDB, PL, REPUBLICANOS etc.), e 2008/2012 com as antigas. Coligações de 2014 e 2018 usam a sigla da época.
+Efeito (município-anos distintos): nenhuma passagem de 1 para 0. 0→1 concentrado em 2017-18 (prefeito MDB de 2016 x PMDB de 2014: ~830/ano em gov, ~1.470/ano em pres) e 2023-25 (federações). Cópia das dummies anteriores: dummies_coalizao_antes.parquet.
 IBGE anual: PIB (br_ibge_pib.municipio) e população (br_ibge_populacao.municipio), com pib_per_capita.
 Censo (SIDRA): grau de urbanização, % jovens (0-19) e % idosos (65+), 2010 e 2022. Interpolação linear entre 2010 e 2022 e forward fill para 2023-2025.
-Logs: ln_populacao, ln_pib_per_capita, ln_pib.
+tabela9923.csv traz dois blocos (absoluto e percentual) e também as concentrações urbanas sob o código do município-sede (ex.: "Belém/PA" = população da região). Filtro: só bloco absoluto e nome terminando em "(UF)" (5.570 municípios, 1 linha cada). Antes isso duplicava todas as linhas de 2022 do painel (+291 mil).
+Conferência no fim do main_code.py: linhas do painel = linhas do Siconfi sem intraorçamentárias (3.281.067).
+Logs nominais (ln_populacao, ln_pib_per_capita, ln_pib): os de PIB são nominais; na regressão usar as versões reais da Célula 4 (ln_pib_real etc.).
 Receitas (controles do Sakurai): br_me_siconfi.municipio_receitas_orcamentarias, estágio Receitas Brutas Realizadas.
 receita_tributaria = id_conta_bd 1.1.1.0.0.00.00.00 (Impostos, Taxas e Contribuições de Melhoria).
 transf_correntes = id_conta_bd 1.1.7.0.0.00.00.00 (Transferências Correntes).
 Merge com o painel por ['ano', 'id_municipio'] (left join).
-Decisões e validações das receitas
+Deflação (feita, `explora_receitas.py` Célula 4): IPCA médio anual, preços de 2025. Fonte: API SIDRA/IBGE, tabela 1737, variável 2266 (número-índice mensal, dez/1993 = 100). Fator = média IPCA 2025 / média IPCA do ano; valor_real = valor_nominal × fator. Justificativa: receitas, despesas e PIB são fluxos do ano civil (Lei 4.320, arts. 34-35; MCASP: receita registrada na arrecadação). Colunas deflacionadas: valor (despesa), receita_tributaria, transf_correntes, pib. Gera <col>_real, <col>_real_pc, ln_<col>_real_pc e ln_pib_real; log de zero/negativo = NaN.
+
+## Estrutura das contas de despesa (validada)
+- id_conta_bd: 3.00.000 = total exceto intraorçamentárias (só de 2014 em diante); 3.FF.000 = 28 funções; 3.FF.SSS = 169 subfunções. portaria equivalente ("10", "10.301"); formato estável 2013-2025, só mudam nomes.
+- Hierarquia fecha: soma das subfunções = função em ≥ 99,98% dos município-anos; soma das funções = total em 100% (2014+); em 2013 o total vem sem código e bate com a soma das funções em 99,5% dos municípios.
+- As 28 funções existem nos 13 anos. Subfunções NÃO comparáveis antes de 2016 ("Administração Geral" FF.122 surge em 2016; antes estava em FF.999).
+- Linhas sem id_conta_bd que ficam no painel: total de 2013 ("Despesas (Exceto Intra-Orçamentárias)") e 64 linhas de "Demais Subfunções" de 2017 (19 municípios). Filtrar por código (3.FF.000) evita as duas.
+- As 64 linhas de 2017 são de nível de subfunção: a soma das funções bate com o total em 100% dos município-anos em 2017, então o valor delas já está dentro das funções. (Verificação opcional caso a caso nos 19 municípios: a diferença deve aparecer só no nível subfunção × função.)
+- Filtro das funções no R: `filter(grepl("^3\\.\\d\\d\\.000$", id_conta_bd), id_conta_bd != "3.00.000")`. Nunca somar a coluna valor sem esse filtro (o mesmo dinheiro aparece no total, na função e na subfunção).
+
+## Decisões e validações das receitas
 Usar o valor da conta mãe direto. Nunca somar uma conta mãe com filha dela (conta dupla).
-Hierarquia validada por município-ano (teste_todas_maes.py, 2013-2025):
+Hierarquia validada por município-ano (codigo/exploracao/teste_mae_filho.py, 2013-2025):
 1.1.1.0 = Impostos (1.1.1.1) + Taxas (1.1.1.2) + Contribuição de Melhoria: bate em 100% dos 71.333 município-anos. A Contribuição de Melhoria não tem id_conta_bd; foi buscada pela portaria 1.1.3.0.00.00.00 (2013-17) / 1.1.3.0.00.0.0 (2018+).
 1.1.7.0 = soma das filhas diretas (portaria 1.7.X.0.00.00.00 em 2013-17 e 1.7.X.0.00.0.0 em 2018+, X de 1 a 9): bate em 100% dos 71.316 município-anos, exceto ~2 casos em 2013.
 Dois sistemas de código: id_conta_bd (padronizado pela Base dos Dados, estável entre anos, só ~50 contas) e portaria (código original do Tesouro, muda de formato e significado em 2018). O mesmo número (ex.: 1.7.2) significa coisas diferentes em cada sistema. Não misturar.
@@ -31,19 +78,53 @@ Filtrar por código, nunca pelo nome da conta: a partir de 2019 existem várias 
 Linhas com id_conta_bd nulo ou vazio ('') existem; IS NOT NULL não pega o vazio. Usar também TRIM(id_conta_bd) != ''.
 Diferença em relação ao Sakurai: transf_correntes (1.1.7.0) inclui mais do que União + Estados (ex.: transferências de outras instituições públicas, convênios, instituições privadas). Declarar na metodologia. Versão só União + Estados exigiria regra por ano (portaria muda em 2018) e fica como possível teste de robustez.
 Estágio usado é receita bruta; não desconta deduções (ex.: FUNDEB).
-Problemas conhecidos e pendências
-Deflacionar valores monetários (IPCA) — despesas e receitas — e usar per capita antes de aplicar log. A Célula 3 cria receita_tributaria_pc e transf_correntes_pc ainda nominais.
-Hierarquia de contas no Siconfi (despesas): a tabela de despesas mistura totais, subtotais e funções (ex.: conta 3.0 é o total, 3.1 é parte dele). Somar valor sem filtrar conta dupla. Falta: listar conta/id_conta_bd/conta_bd distintos, manter só o nível de função e validar que a soma das funções bate com o total por município-ano (mesma lógica do teste_todas_maes.py).
-Siglas partidárias que mudaram (PMDB para MDB, PPS para Cidadania, DEM e PSL para União Brasil etc.) geram falso 0 em verifica_alianca. Precisa de dicionário de equivalência.
-MAX(composicao_coligacao) na query de governador/presidente é arbitrário se 1º e 2º turno tiverem textos diferentes. Verificar.
+
+## Variáveis dependentes (decidido)
+Todas em valores reais (IPCA, R$ de 2025) e per capita, no nível de FUNÇÃO (`nivel_conta == 2`, `id_conta_bd` no formato `3.FF.000`). Agrupamentos seguem Sakurai (2009), com os ajustes indicados.
+
+| # | Variável | Funções (`id_conta_bd`) | Justificativa (revisão de literatura) |
+|---|---|---|---|
+| 0 | Despesa total | soma das 28 funções (3.01 a 3.28), em TODOS os anos | Ciclo agregado: Sakurai e Gremaud (2007); Sakurai e Menezes-Filho (2011). Decidido: não usar a linha de total `3.00.000` (não existe em 2013; o total sem código de 2013 bate com a soma das funções em só 99,5% dos municípios). Somar as funções dá uma definição única para todos os anos e coerente com as demais variáveis; de 2014 em diante é idêntico ao total oficial. Somar as 28 funções, não só as escolhidas. |
+| 1 | Saúde e Saneamento | 3.10.000 + 3.17.000 | Sakurai (2009) encontrou ciclo; Nunes (2017) não. |
+| 2 | Educação e Cultura | 3.12.000 + 3.13.000 | Nunes (2017): efeito negativo, rigidez das vinculações. |
+| 3 | Habitação e Urbanismo | 3.16.000 + 3.15.000 | Gasto visível (Drazen e Eslava, 2010); ciclo em Sakurai (2009). |
+| 4 | Assistência Social | 3.08.000 (sem Previdência) | Teixeira e Mattos (2021); Sakurai (2009). Previdência (3.09, RPPS) é gasto obrigatório e Drazen e Eslava (2010) mostram que pensões são cortadas → separado do Sakurai. |
+| 5 | Transporte | 3.26.000 | Sakurai (2009); Teixeira e Mattos (2021). |
+| 6 | Administração | 3.04.000 | Gasto pouco visível; redução em ano eleitoral em Teixeira e Mattos (2021). |
+| 7 | Agricultura | 3.20.000 | Retração em ano eleitoral em Sakurai (2009). |
+| 8 | Comunicações | 3.24.000 (só a função, sem a subfunção 3.04.131) | Sakurai (2009): dummy de ano eleitoral positiva e significativa (0,280***), hipótese de divulgação das realizações. |
+
+Fora da lista: Legislativa (repasse à Câmara tem teto constitucional), Previdência (obrigatória; pode entrar como robustez "Assistência + Previdência", igual ao Sakurai), demais funções pequenas.
+
+Diferenças em relação ao Sakurai a declarar na metodologia: deflator IPCA (ele usou IGP-DI, R$ de 2006); Assistência sem Previdência; Administração incluída; classificação funcional atual (Portaria 42/1999) em todo o período, enquanto o período dele atravessa a troca da classificação antiga (motivo provável dos agrupamentos; confirmar antes de citar).
+
+## A VER DEPOIS: qualidade dos dados e cuidados (não resolvido)
+1. **Ausência ≠ zero.** A classificação por função/subfunção é feita pela prefeitura; um gasto pode estar lançado em outra conta (ex.: publicidade em Administração Geral 04.122/04.999 ou dentro da própria área). Não preencher automaticamente com 0 ao pivotar.
+   - Funções grandes (Saúde, Educação, Urbanismo, Administração, Assistência, ~5.400 municípios/ano): ausência rara; zero é aceitável.
+   - Funções com cobertura parcial: Comunicações (~950 municípios/ano, caindo de 1.165 para 851), Habitação (~1.400), Saneamento (~3.200), Transporte (~4.200), Agricultura (~5.000). Avaliar amostra restrita aos municípios que informam a conta de forma regular.
+   - Com efeito fixo de município, quem nunca usa a conta não afeta o coeficiente; o risco são municípios que alternam a classificação entre anos (variação artificial).
+   - Antes de decidir: tabela por variável com nº de municípios que informam valor em todos os 13 anos, em parte dos anos e em nenhum.
+2. **Comunicações (função 24) é sobretudo infraestrutura** (telecomunicações, postais, demais subfunções). Gasto com publicidade/divulgação fica em Comunicação Social (`3.04.131`, ~1.040 municípios/ano, 0,15% do gasto). Decidido por ora usar só a função 24 (comparação com Sakurai); `3.04.131` fica como possível extensão. Se usada junto com Administração, definir Administração = 3.04.000 − 3.04.131.
+3. **Lei eleitoral (Lei 9.504/1997, art. 73)**: proíbe publicidade institucional nos 3 meses antes da eleição e limita gastos com publicidade no ano eleitoral. Com dado anual, alta no 1º semestre e bloqueio no 2º podem se compensar. Conferir redação vigente.
+4. **Participação no total como robustez**: rodar também com a participação de cada grupo na despesa total (%), como Teixeira e Mattos (2021); mostra recomposição melhor que o per capita.
+5. **Vinculações constitucionais**: mínimos de Saúde (15%) e Educação (25%) das receitas de impostos limitam a margem do prefeito; usar na interpretação.
+6. **Subfunções não comparáveis antes de 2016** ("Administração Geral" 122 surge em 2016, antes estava em 999). Só afeta se alguma subfunção for usada.
+7. **Forma funcional**: Sakurai usa per capita em nível (coeficientes em R$ per capita). Para comparar diretamente, usar a mesma forma; log como alternativa.
+8. **Especificação**: não usar efeito fixo de ano junto com a dummy de ano eleitoral (colinear; todos os municípios votam no mesmo ano). Sakurai usou tendência linear e quadrática. Erros-padrão agrupados por município; Hausman clássico e robusto.
+
+## Pendências
+- **População nos anos finais (checar já):** a query do IBGE faz INNER JOIN entre PIB e população; nos anos sem PIB a população também some, e todas as variáveis per capita ficam vazias. Conferir nº de município-anos com populacao e pib vazios por ano; se faltar população, buscá-la separada do PIB.
 Cobertura temporal: PIB municipal sai com defasagem, então os anos finais podem ficar nulos. Siconfi 2025 tem menos municípios (~5.440 contra ~5.550). Receitas têm queda de cobertura em 2014 (~5.180 municípios).
-Conferir nulos em titulo_eleitoral_candidato e eventuais eleições suplementares que desalinhem o shift(1).
-Despesas por função no corpo do trabalho (ex.: Urbanismo, Habitação, Cultura). Investimentos reais (Anexo 2, natureza da despesa, municipio_despesas_orcamentarias) ficam como teste de robustez.
+- 49 municípios sem prefeito eleito em 2024 (provavelmente eleição anulada sem suplementar na base): documentar como limitação.
+- Despesas por função no corpo do trabalho; investimentos (Anexo 2, natureza da despesa, municipio_despesas_orcamentarias) ficam como robustez.
 Variáveis do Censo não variam o suficiente para sobreviver a efeitos fixos de município. Úteis para descritivas e heterogeneidade.
-Ainda não decidido: estimar no Python (linearmodels ou statsmodels) ou exportar para Stata/R.
-Convenções
+
+## Convenções
 Responder em português.
 Manter o padrão de cache por os.path.exists em cada consulta ao BigQuery.
+Caminhos de arquivo sempre via `codigo/caminhos.py` (novos arquivos: criar a constante lá primeiro).
 Scripts rodam em VS Code com células # %%; usar print em vez de display em .py.
 Em GROUP BY, usar nomes de colunas em vez de posições (GROUP BY 1, 2...).
 Antes de afirmar algo sobre a estrutura dos dados, verificar com código. Não supor hierarquia de contas.
+Antes de mudar uma regra que altera variáveis do modelo, mostrar o efeito (antes × depois) e pedir aprovação.
+A usuária prefere código simples e explicado, que ela consiga ler e rodar.

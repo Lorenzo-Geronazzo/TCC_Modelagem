@@ -9,6 +9,17 @@ import basedosdados as bd
 import pandas as pd
 import os
 
+# Caminhos dos arquivos do projeto (ver codigo/caminhos.py).
+# Procura a pasta codigo/ subindo a partir da pasta atual, para funcionar
+# tanto no terminal (raiz do projeto) quanto nas células do VS Code.
+import sys
+from pathlib import Path
+for _pasta in [Path.cwd(), *Path.cwd().parents]:
+    if (_pasta / "codigo" / "caminhos.py").exists():
+        sys.path.insert(0, str(_pasta / "codigo"))
+        break
+from caminhos import CATALOGO_RECEITAS, CATALOGO_RECEITAS_XLSX, SICONFI_RECEITAS, RECEITAS_MUNICIPIO_ANO, RECEITAS_MUNICIPIO_ANO_CSV, PAINEL_ELEICOES, PAINEL_ELEICOES_RECEITAS, IPCA_MENSAL, PAINEL_FINAL_REAL
+
 ANO_INICIAL = 2013  # mesmo recorte do painel de despesas
 
 # %%
@@ -17,7 +28,7 @@ ANO_INICIAL = 2013  # mesmo recorte do painel de despesas
 # ==============================================================================
 # Uma linha por estágio x conta x ano, com nº de municípios e soma dos valores.
 # Serve para enxergar a hierarquia de contas e a cobertura antes de baixar tudo.
-caminho_catalogo = "catalogo_receitas.parquet"
+caminho_catalogo = CATALOGO_RECEITAS
 
 if os.path.exists(caminho_catalogo):
     df_cat_ano = pd.read_parquet(caminho_catalogo)
@@ -76,7 +87,7 @@ print(f"\nLinhas do catálogo sem id_conta_bd: {len(sem_bd)}")
 # Se o .xlsx estiver aberto no Excel, o Windows bloqueia a escrita (PermissionError).
 # Nesse caso só avisa e segue, sem travar as próximas etapas.
 try:
-    with pd.ExcelWriter("catalogo_receitas.xlsx") as writer:
+    with pd.ExcelWriter(CATALOGO_RECEITAS_XLSX) as writer:
         df_cat.sort_values(chaves_conta).to_excel(writer, sheet_name='resumo_conta_bd', index=False)
         df_cobertura.to_excel(writer, sheet_name='municipios_por_ano', index=False)
         df_cat_ano.sort_values(['estagio', 'ano', 'portaria']).to_excel(writer, sheet_name='original_por_ano', index=False)
@@ -98,7 +109,7 @@ print(df_cat.sort_values(chaves_conta).head(40).to_string())
 ESTAGIOS_BD = ['Receitas Brutas Realizadas']   # ex.: ['Receitas Brutas Realizadas'] (valores de estagio_bd)
 CONTAS_BD = ['1.1.1.0.0.00.00.00', '1.1.7.0.0.00.00.00']     # ex.: ['1.1.0.0.00.0.0', '1.7.0.0.00.0.0'] (valores de id_conta_bd); vazio = todas
 
-caminho_receitas = "base_siconfi_receitas.parquet"
+caminho_receitas = SICONFI_RECEITAS
 
 if not ESTAGIOS_BD:
     print("Defina ESTAGIOS_BD (e opcionalmente CONTAS_BD) a partir do catálogo antes de rodar esta célula.")
@@ -148,8 +159,8 @@ if ESTAGIOS_BD:
     df_receitas_largo.columns = [f"{e} | {c}" for e, c in df_receitas_largo.columns]
     df_receitas_largo = df_receitas_largo.reset_index()
 
-    df_receitas_largo.to_parquet("receitas_municipio_ano.parquet", index=False)
-    df_receitas_largo.to_csv("receitas_municipio_ano.csv", index=False, sep=';', decimal=',', encoding='utf-8-sig')
+    df_receitas_largo.to_parquet(RECEITAS_MUNICIPIO_ANO, index=False)
+    df_receitas_largo.to_csv(RECEITAS_MUNICIPIO_ANO_CSV, index=False, sep=';', decimal=',', encoding='utf-8-sig')
     print(f"Base larga gerada: {df_receitas_largo.shape[0]} município-anos, {df_receitas_largo.shape[1]} colunas")
     print(df_receitas_largo.head(10).to_string())
     print(df_receitas.groupby(["ano", "id_municipio"]).ngroups, len(df_receitas_largo))
@@ -168,7 +179,7 @@ if ESTAGIOS_BD:
 import pandas as pd
 
 # 1) Lê a base larga gerada pela Célula 2 e dá nomes curtos às colunas
-receitas = pd.read_parquet("receitas_municipio_ano.parquet")
+receitas = pd.read_parquet(RECEITAS_MUNICIPIO_ANO)
 receitas = receitas.rename(columns={
     "Receitas Brutas Realizadas | 1.1.1.0.0.00.00.00": "receita_tributaria",
     "Receitas Brutas Realizadas | 1.1.7.0.0.00.00.00": "transf_correntes",
@@ -180,7 +191,7 @@ duplicados = receitas.duplicated(["ano", "id_municipio"]).sum()
 print(f"Município-anos repetidos nas receitas: {duplicados}  (tem que ser 0)")
 
 # 2) Garante que as chaves têm o mesmo tipo nas duas tabelas (texto)
-painel = pd.read_parquet("painel_final_eleicoes.parquet")
+painel = pd.read_parquet(PAINEL_ELEICOES)
 for tabela in (painel, receitas):
     tabela["id_municipio"] = tabela["id_municipio"].astype(str)
     tabela["ano"] = tabela["ano"].astype(int)
@@ -205,7 +216,7 @@ else:
     print(list(painel.columns))
 
 # 6) Salva em arquivo novo (não sobrescreve o painel original)
-painel.to_parquet("painel_final_eleicoes_receitas.parquet", index=False)
+painel.to_parquet(PAINEL_ELEICOES_RECEITAS, index=False)
 print("\nSalvo: painel_final_eleicoes_receitas.parquet")
 
 # %%
@@ -226,7 +237,7 @@ ANO_BASE = 2025
 ANO_INICIAL = 2013
 
 # 1) Baixa o IPCA mensal (com cache em csv, como os outros blocos)
-caminho_ipca = "ipca_mensal.csv"
+caminho_ipca = IPCA_MENSAL
 if os.path.exists(caminho_ipca):
     ipca = pd.read_csv(caminho_ipca, dtype={"mes": str})
     print("IPCA carregado do arquivo local!")
@@ -256,7 +267,7 @@ print(ipca_anual.round(4))
 
 # %%
 # 3) Aplica o fator às colunas monetárias do painel
-painel = pd.read_parquet("painel_final_eleicoes_receitas.parquet")
+painel = pd.read_parquet(PAINEL_ELEICOES_RECEITAS)
 
 # Colunas em R$ nominais. CONFIRA E COMPLETE com as colunas de despesa do seu painel
 # (use print(list(painel.columns)) para ver os nomes).
@@ -303,7 +314,7 @@ for col in [c for c in COLUNAS_MONETARIAS if c in painel.columns][:2]:
     print(f"\nMédia por ano de {col}: nominal x real (R$ de {ANO_BASE})")
     print(painel.groupby("ano")[[col, f"{col}_real"]].mean().round(0))
 
-painel.to_parquet("painel_final_real.parquet", index=False)
+painel.to_parquet(PAINEL_FINAL_REAL, index=False)
 print("\nSalvo: painel_final_real.parquet")
 
 # %%

@@ -6,12 +6,23 @@ import basedosdados as bd
 import pandas as pd
 import os
 
+# Caminhos dos arquivos do projeto (ver codigo/caminhos.py).
+# Procura a pasta codigo/ subindo a partir da pasta atual, para funcionar
+# tanto no terminal (raiz do projeto) quanto nas células do VS Code.
+import sys
+from pathlib import Path
+for _pasta in [Path.cwd(), *Path.cwd().parents]:
+    if (_pasta / "codigo" / "caminhos.py").exists():
+        sys.path.insert(0, str(_pasta / "codigo"))
+        break
+from caminhos import TESTE_TODAS_MAES, NAO_BATEM_TODAS_MAES, RESUMO_TODAS_MAES, CONTRIBUICAO_MELHORIA, TRIB_AINDA_NAO_BATEM, TRANSFERENCIAS_FILHAS, TRANSF_NAO_BATEM
+
 ESTAGIO = "Receitas Brutas Realizadas"
 ANO_INICIAL = 2013
 
 # %%
 # 1) Baixa todas as contas com id_conta_bd desse estágio, somadas por município-ano-conta
-caminho = "teste_todas_maes.parquet"
+caminho = TESTE_TODAS_MAES
 if os.path.exists(caminho):
     df = pd.read_parquet(caminho)
     print("Carregado do arquivo local!")
@@ -86,8 +97,8 @@ for c in orfas:
     print("  ", c, "-> mãe esperada", mapa_mae[c])
 
 # Salva tudo que não bate para abrir no Excel
-r[~r["bate"]].to_csv("nao_batem_todas_maes.csv", index=False, sep=";", decimal=",", encoding="utf-8-sig")
-resumo.to_csv("resumo_todas_maes.csv", sep=";", decimal=",", encoding="utf-8-sig")
+r[~r["bate"]].to_csv(NAO_BATEM_TODAS_MAES, index=False, sep=";", decimal=",", encoding="utf-8-sig")
+resumo.to_csv(RESUMO_TODAS_MAES, sep=";", decimal=",", encoding="utf-8-sig")
 print("\nSalvos: resumo_todas_maes.csv e nao_batem_todas_maes.csv")
 
 # %%
@@ -98,7 +109,7 @@ print("\nSalvos: resumo_todas_maes.csv e nao_batem_todas_maes.csv")
 #    existem mais de uma linha chamada "Contribuição de Melhoria" no mesmo ano
 #    (2019-21: 1.1.3.0.00.1.0; 2022+: 1.1.3.1.00.0.0), e somar todas contava em dobro.
 #    2013-2017 usam o código 1.1.3.0.00.00.00; 2018 em diante, 1.1.3.0.00.0.0.
-caminho_cm = "contribuicao_melhoria_v2.parquet"
+caminho_cm = CONTRIBUICAO_MELHORIA
 if os.path.exists(caminho_cm):
     cm = pd.read_parquet(caminho_cm)
     print("Contribuição de Melhoria carregada do arquivo local!")
@@ -128,7 +139,7 @@ print("\nPor ano (% que batem com a Contribuição de Melhoria):")
 print((trib.groupby("ano")["bate_com_cm"].mean() * 100).round(2))
 
 # Casos que ainda não batem, para abrir no Excel
-trib[~trib["bate_com_cm"]].to_csv("trib_ainda_nao_batem.csv", index=False,
+trib[~trib["bate_com_cm"]].to_csv(TRIB_AINDA_NAO_BATEM, index=False,
                                   sep=";", decimal=",", encoding="utf-8-sig")
 print("\nCasos que ainda não batem salvos em trib_ainda_nao_batem.csv")
 
@@ -137,7 +148,7 @@ print("\nCasos que ainda não batem salvos em trib_ainda_nao_batem.csv")
 #    As filhas diretas não têm id_conta_bd, então são buscadas pelo CÓDIGO original (coluna portaria):
 #    1.7.X.0.00.00.00 (2013-2017) ou 1.7.X.0.00.0.0 (2018 em diante), com X de 1 a 9.
 #    O filtro exige zeros depois do X, então netas (ex.: 1.7.2.1...) ficam de fora.
-caminho_tc = "transferencias_filhas.parquet"
+caminho_tc = TRANSFERENCIAS_FILHAS
 if os.path.exists(caminho_tc):
     tc = pd.read_parquet(caminho_tc)
     print("Filhas das Transferências Correntes carregadas do arquivo local!")
@@ -176,6 +187,6 @@ print(f"Batem (diferença < R$ 1): {transf['bate'].mean():.2%}")
 print("\nPor ano (% que batem):")
 print((transf.groupby("ano")["bate"].mean() * 100).round(2))
 
-transf[~transf["bate"]].to_csv("transf_nao_batem.csv", index=False,
+transf[~transf["bate"]].to_csv(TRANSF_NAO_BATEM, index=False,
                                sep=";", decimal=",", encoding="utf-8-sig")
 print("\nCasos que não batem salvos em transf_nao_batem.csv")

@@ -11,3 +11,13 @@ __pycache__/
 .env
 .env.*
 !.env.example
+
+# Dados gerados e cópias locais: não versionados (recriar rodando o pipeline).
+# Para recriar: rodar codigo/main_code.py e depois codigo/explora_receitas.py.
+# Os caches são recriados por download (Base dos Dados/TSE) quando não existem.
+dados/cache/*
+!dados/cache/ipca_mensal.csv
+dados/finais/
+backups/
+obsoletos/
+saidas/

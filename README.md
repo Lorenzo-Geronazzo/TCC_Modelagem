@@ -8,15 +8,19 @@ Pipeline de construcao do painel municipal com dados do SICONFI, TSE, IBGE e Cen
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-python main_code.py
+python codigo/main_code.py
+python codigo/explora_receitas.py
 ```
 
-O script consulta a Base dos Dados quando os arquivos locais não existem e gera
-`painel_final_eleicoes.parquet`. As bases Parquet são ignoradas pelo Git porque
-sao arquivos derivados e podem ser recriadas pelo pipeline.
+Os scripts consultam a Base dos Dados só quando o cache em `dados/cache/` não existe.
+A base final é `dados/finais/painel_final_real.parquet`. Os painéis
+`dados/finais/painel_final_*.parquet` são ignorados pelo Git (são grandes e podem ser
+recriados pelo pipeline); os caches são versionados via Git LFS.
 
-## Testes
+## Pastas
 
-```powershell
-pytest
-```
+- `codigo/`: pipeline (`main_code.py`, `explora_receitas.py`) e `caminhos.py`, com todos os caminhos de arquivo.
+- `codigo/exploracao/`: testes e explorações fora do pipeline.
+- `dados/externos/`, `dados/cache/`, `dados/finais/`: CSVs do SIDRA, caches das consultas e bases geradas.
+- `saidas/exploracao/`: planilhas e CSVs de conferência.
+- `backups/`, `obsoletos/`, `referencia/`, `regressao/` (scripts de R).
