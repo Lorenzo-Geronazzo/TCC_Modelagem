@@ -22,3 +22,6 @@ dados/finais/
 backups/
 obsoletos/
 saidas/
+.Rproj.user/
+.Rhistory
+.RData

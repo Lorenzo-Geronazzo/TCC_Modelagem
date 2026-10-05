@@ -1,7 +1,7 @@
 # Contexto do projeto: TCC em Ciências Econômicas (UFPR)
 
 ## Tema
-Ciclos Políticos Orçamentários e finanças municipais no Brasil. Analisa como as despesas dos municípios respondem ao ciclo eleitoral e ao alinhamento político do prefeito com governador e presidente. Metodologia: painel município-ano seguindo Sakurai (2009): estimar pooled, efeitos fixos e efeitos aleatórios, teste de Hausman (clássico e robusto) e reportar o modelo escolhido. Controles do Sakurai: receita tributária e receita de transferências correntes, demografia, população. Estimação em R (`arrow::read_parquet`, `plm`, `fixest`, `modelsummary`).
+Ciclos Políticos Orçamentários e finanças municipais no Brasil. Analisa como as despesas dos municípios respondem ao ciclo eleitoral e ao alinhamento político do prefeito com governador e presidente. Metodologia: painel município-ano seguindo Sakurai (2009): estimar pooled, efeitos fixos e efeitos aleatórios, teste de Hausman (clássico e robusto) e reportar o modelo escolhido. Controles do Sakurai: receita tributária e receita de transferências correntes, demografia, população. Estimação em R (`arrow`, `dplyr`, `tidyr`, `plm`, `lmtest`, `sandwich`, `ggplot2`, `scales`, `flextable`, `here`); ver seção "Regressão em R".
 
 ## Estado atual da base (leia primeiro)
 - **Base final: `dados/finais/painel_final_real.parquet`** (valores deflacionados, R$ de 2025). Não versionada no git (ver Estrutura de pastas); recriar rodando o pipeline.
@@ -9,7 +9,8 @@ Ciclos Políticos Orçamentários e finanças municipais no Brasil. Analisa como
   1. `codigo/main_code.py` → `dados/finais/painel_final_eleicoes.parquet`.
   2. `codigo/explora_receitas.py`, Células 2 e 3 → `dados/finais/receitas_municipio_ano.parquet` e `dados/finais/painel_final_eleicoes_receitas.parquet` (Célula 1 = catálogo, só exploração).
   3. `codigo/explora_receitas.py`, Célula 4 (deflação) → `dados/finais/painel_final_real.parquet`.
-- Formato: uma linha por município × ano × conta de despesa (inclui total, funções e subfunções). Para as variáveis dependentes usar só `id_conta_bd` no formato `3.FF.000` (ver seção Variáveis dependentes) e pivotar no R para uma linha por município-ano.
+  4. R: `regressao/rodar_tudo.R` (no terminal, na raiz: `Rscript regressao/rodar_tudo.R`; no RStudio: abrir `TCC_Modelagem.Rproj` e dar Source). O `01_base_regressao.R` gera `dados/finais/base_regressao.rds`; os demais leem esse arquivo.
+- Formato: uma linha por município × ano × conta de despesa (inclui total, funções e subfunções). Para as variáveis dependentes usar só `id_conta_bd` no formato `3.FF.000` (ver seção Variáveis dependentes). A passagem para uma linha por município-ano é feita no R, em `regressao/01_base_regressao.R` (decisão: montar a base no R, não em Python).
 
 ## Estrutura de pastas
 - `codigo/`: pipeline. `main_code.py`, `explora_receitas.py` e **`caminhos.py`** (todos os caminhos de arquivo, a partir da raiz do projeto).
@@ -21,9 +22,10 @@ Ciclos Políticos Orçamentários e finanças municipais no Brasil. Analisa como
 - `backups/`: cópias "antes" de mudanças de regra (dummies_coalizao_antes.parquet, segundo_mandato_antes.parquet, coalizao_gov_antes_tse_ordinaria.parquet).
 - `obsoletos/`: caches que não são mais usados (base_prefeitos.parquet, base_prefeitos_v2.parquet, base_gov_pres.parquet, base_ibge_anual.parquet).
 - `referencia/br_me_siconfi/`: código do pipeline da própria Base dos Dados que baixa o Siconfi (Prefect). Só referência; nenhum script nosso usa.
-- `regressao/`: scripts de R (vazia por enquanto).
-- Como os scripts acham os arquivos: cada script procura a pasta `codigo/` subindo a partir da pasta atual e importa as constantes de `caminhos.py` (ex.: `PAINEL_FINAL_REAL`, `CACHE`). Funciona no terminal na raiz (`python codigo/main_code.py`) e nas células do VS Code (que rodam na pasta do script). Para mudar um arquivo de lugar, mudar só `caminhos.py`. Nunca escrever nome de arquivo solto nos scripts.
-- Git: só código e documentação são versionados: `codigo/`, `dados/externos/` (CSVs do SIDRA), `dados/cache/ipca_mensal.csv` e `dados/cache/pib_nacional_trimestral.csv` (únicos arquivos versionados em `dados/cache/`), `CLAUDE.md`, `README.md`, `requirements.txt`, `regressao/.gitkeep` e `referencia/`. Ficam fora do Git (no `.gitignore`, recriados pelo pipeline): `dados/cache/` (exceto `ipca_mensal.csv` e `pib_nacional_trimestral.csv`), `dados/finais/`, `backups/`, `obsoletos/` e `saidas/`. Git LFS desligado (`git lfs untrack "*.parquet"`; `.gitattributes` vazio). Versões antigas de parquet continuam no histórico/LFS do GitHub (commits até 65e1751). Em outro computador, a 1ª execução baixa os caches de novo (custo no BigQuery). Reorganização conferida: depois de mover, o pipeline rodou só com caches (download bloqueado) e `painel_final_real.parquet` saiu idêntico ao anterior (3.281.067 × 48, `assert_frame_equal`).
+- `regressao/`: scripts de R (ver seção "Regressão em R"). Saídas em `regressao/saidas/tabelas/` (.csv e .docx) e `regressao/saidas/graficos/` (.png). `TCC_Modelagem.Rproj` fica na raiz do projeto.
+- `dados/finais/base_regressao.rds`: base de regressão, uma linha por município-ano (gerada pelo `01_base_regressao.R`).
+- Como os scripts acham os arquivos: cada script procura a pasta `codigo/` subindo a partir da pasta atual e importa as constantes de `caminhos.py` (ex.: `PAINEL_FINAL_REAL`, `CACHE`). Funciona no terminal na raiz (`python codigo/main_code.py`) e nas células do VS Code (que rodam na pasta do script). Para mudar um arquivo de lugar, mudar só `caminhos.py`. Nunca escrever nome de arquivo solto nos scripts. No R, o equivalente é `regressao/00_configuracao.R`: caminhos com `here::here(...)`, que acha a raiz pelo `TCC_Modelagem.Rproj` (ou pela pasta `.git`), então funciona no terminal, no VS Code e no RStudio sem `setwd`.
+- Git: só código e documentação são versionados: `codigo/`, `dados/externos/` (CSVs do SIDRA), `dados/cache/ipca_mensal.csv` e `dados/cache/pib_nacional_trimestral.csv` (únicos arquivos versionados em `dados/cache/`), `CLAUDE.md`, `README.md`, `requirements.txt`, `regressao/*.R`, `TCC_Modelagem.Rproj` e `referencia/`. Ficam fora do Git (no `.gitignore`, recriados pelo pipeline): `dados/cache/` (exceto `ipca_mensal.csv` e `pib_nacional_trimestral.csv`), `dados/finais/` (inclui `base_regressao.rds`), `backups/`, `obsoletos/` e `saidas/` (o padrão `saidas/` também ignora `regressao/saidas/`). Arquivos do R a ignorar: `.Rproj.user/`, `.Rhistory`, `.RData`. Git LFS desligado (`git lfs untrack "*.parquet"`; `.gitattributes` vazio). Versões antigas de parquet continuam no histórico/LFS do GitHub (commits até 65e1751). Em outro computador, a 1ª execução baixa os caches de novo (custo no BigQuery). Reorganização conferida: depois de mover, o pipeline rodou só com caches (download bloqueado) e `painel_final_real.parquet` saiu idêntico ao anterior (3.281.067 × 48, `assert_frame_equal`).
 - Fonte principal: Base dos Dados (BigQuery), projeto de cobrança monografia-508123.
 
 ## Arquivos
@@ -99,12 +101,69 @@ Fora da lista: Legislativa (repasse à Câmara tem teto constitucional), Previd�
 
 Diferenças em relação ao Sakurai a declarar na metodologia: deflator IPCA (ele usou IGP-DI, R$ de 2006); Assistência sem Previdência; Administração incluída; classificação funcional atual (Portaria 42/1999) em todo o período, enquanto o período dele atravessa a troca da classificação antiga (motivo provável dos agrupamentos; confirmar antes de citar).
 
+Regra de montagem dos grupos (`01_base_regressao.R`): soma das funções do grupo que o município informou; se nenhuma função do grupo aparece no município-ano, o grupo fica vazio (NA), não zero. Despesa total = soma de todas as funções informadas. Forma principal: per capita em nível (R$ de 2025 por habitante), como Sakurai. Também gera `ln_<var>_pc` (log; zero ou negativo vira NA) e `<grupo>_part` (% da despesa total), usados na robustez. Robustez extra: `assist_previdencia` = 3.08.000 + 3.09.000 (agrupamento do Sakurai).
+
+## Variáveis explicativas (decidido)
+- Interesse: `ano_eleitoral` (= 1 em 2016, 2020 e 2024; só 3 anos eleitorais na amostra), `coalizao_gov` e `coalizao_pres` (prefeito do partido do governador/presidente ou da coligação deles; versão principal com fusões).
+- Controles: `receita_tributaria_real_pc`, `transf_correntes_real_pc`, `perc_jovens`, `perc_idosos`, `grau_urb`, `ln_populacao`, `pib_nacional_tri` (= `pib_nacional_real` / 1e12, PIB nacional real em R$ trilhões, só para o coeficiente ter uma escala legível), `tendencia` (= ano − 2012, então 2013 = 1) e `tendencia2` (quadrado).
+- Só na robustez: `pre_eleitoral` (2015, 2019, 2023), `segundo_mandato`, `coalizao_gov_sem_fusao`/`coalizao_pres_sem_fusao`, `ln_pib_mun_pc` (PIB municipal real per capita em log, só até 2023).
+- Ideologia do partido do prefeito: fora do modelo (decisão da autora). Sakurai usa; declarar como diferença/limitação.
+- Sem efeito fixo de ano (colinear com a dummy de ano eleitoral); o tempo entra pelas tendências e pelo PIB nacional.
+
+## Regressão em R
+Scripts em `regressao/`, rodar na ordem (ou tudo pelo `rodar_tudo.R`):
+- `00_configuracao.R`: instala/carrega pacotes, caminhos (`here`), anos eleitorais, `GRUPOS`, `DEPENDENTES`, rótulos, `INTERESSE`, `CONTROLES`, `METODO_RE` e funções auxiliares (fórmula, erro-padrão agrupado, tabela de regressão, salvar tabela em .csv/.docx, Hausman robusto). Mudar a especificação aqui, não nos outros scripts.
+- `01_base_regressao.R`: lê só as colunas necessárias do painel, soma as funções em grupos, junta os atributos do município-ano (para se um município-ano tiver atributos diferentes entre linhas), cria per capita, logs, participações, dummies de tempo e tendências; imprime contagens e % de vazios; salva `dados/finais/base_regressao.rds`.
+- `01b_cobertura.R`: tabela de cobertura das funções e dos grupos (municípios que informam em todos os anos, em parte, com buraco, em nenhum; linhas com valor zero; municípios por ano). Base para a decisão de "A VER DEPOIS", item 1.
+- `02_descritivas.R`: tabelas descritivas (N, média, desvio-padrão, mínimo, máximo) das explicativas e das dependentes; gráfico da média anual de cada dependente per capita, em nível e em log, com faixas no ano eleitoral (laranja escuro) e pré-eleitoral (amarelo); painel com todas em log.
+- `03_hausman.R`: para cada dependente, efeitos fixos (`within`) × aleatórios; Hausman clássico (`phtest`) e robusto (Mundlak/Wooldridge: médias por município das variáveis que variam entre municípios, teste de Wald conjunto com erro-padrão agrupado). Tabela com o modelo indicado por cada teste.
+- `04_regressoes.R`: as 9 regressões principais (`MODELO <- "within"`; trocar para `"random"` se o Hausman indicar) e comparação pooled/FE/RE para a despesa total. Salva também `modelos_principais.rds`.
+- `05_robustez.R`: R1 coalizões sem fusões; R2 sem prefeito/governador de suplementar; R3 dependente em log; R4 participação na despesa total (%); R5 + pré-eleitoral; R6 + segundo mandato; R7 PIB municipal no lugar do nacional (2013-2023); R8 Assistência + Previdência; R9 Transporte, Agricultura e Comunicações só com os municípios que informam a função (valor > 0) em todos os anos em que aparecem na base. Cada tabela mostra só os coeficientes de interesse.
+Decisões de estimação:
+- Erros-padrão agrupados por município (`vcovHC`, método Arellano, HC1) em todas as tabelas.
+- Efeitos aleatórios com o método Wallace-Hussain (`random.method = "walhus"`). Motivo: com variáveis que só variam no tempo (ano eleitoral, tendências, PIB nacional), a regressão "between" do método padrão (Swamy-Arora) fica singular e o modelo não roda.
+- Hausman robusto implementado à mão (`hausman_mundlak`), porque `phtest(method = "aux")` ignora o `random.method` e falha. Validado em dados simulados: não rejeita sem correlação e rejeita com correlação induzida.
+- Testado só em painel simulado; ainda não rodado na base real.
+
+## Cobertura das funções e ausências (RESOLVIDO; antigo "A VER DEPOIS", item 1)
+**Ausência ≠ zero.** A classificação por função/subfunção é feita pela prefeitura; um gasto pode estar lançado em outra conta (ex.: publicidade em Administração Geral 04.122/04.999 ou dentro da própria área). Não preencher automaticamente com 0.
+
+Tabela de cobertura (`regressao/01b_cobertura.R` rodado na base real; saídas `regressao/saidas/tabelas/cobertura_funcoes.csv` e `cobertura_grupos.csv`). Nº de municípios. "Todos os anos" = informa a função em todos os anos em que o município aparece no Siconfi (não necessariamente os 13); "Parte" = em alguns desses anos; "com buraco" = dentro de "Parte", falta algum ano entre o primeiro e o último informado; "Nenhum" = nunca informa.
+
+| Função | Conta | Todos os anos | Parte dos anos | Parte: com buraco | Nenhum ano | Linhas com valor zero | Média de municípios/ano |
+|---|---|---|---|---|---|---|---|
+| Administração | 3.04.000 | 5.447 | 122 | 109 | 0 | 0 | 5.474 |
+| Assistência Social | 3.08.000 | 5.382 | 187 | 154 | 0 | 0 | 5.466 |
+| Previdência Social | 3.09.000 | 2.134 | 1.333 | 493 | 2.102 | 2 | 2.855 |
+| Saúde | 3.10.000 | 5.395 | 174 | 136 | 0 | 0 | 5.468 |
+| Educação | 3.12.000 | 5.430 | 139 | 115 | 0 | 0 | 5.470 |
+| Cultura | 3.13.000 | 4.109 | 1.426 | 1.107 | 34 | 0 | 5.071 |
+| Urbanismo | 3.15.000 | 5.043 | 515 | 396 | 11 | 0 | 5.375 |
+| Habitação | 3.16.000 | 427 | 3.035 | 1.537 | 2.107 | 1 | 1.419 |
+| Saneamento | 3.17.000 | 1.797 | 2.950 | 1.899 | 822 | 1 | 3.219 |
+| Agricultura | 3.20.000 | 4.245 | 1.191 | 858 | 133 | 1 | 4.999 |
+| Comunicações | 3.24.000 | 328 | 1.568 | 609 | 3.673 | 2 | 958 |
+| Transporte | 3.26.000 | 2.984 | 2.225 | 1.391 | 360 | 1 | 4.220 |
+
+| Grupo | Todos os anos | Parte dos anos | Parte: com buraco | Nenhum ano | Linhas com valor zero | Média de municípios/ano |
+|---|---|---|---|---|---|---|
+| saude_saneamento | 5.411 | 158 | 125 | 0 | 0 | 5.470 |
+| educ_cultura | 5.440 | 129 | 106 | 0 | 0 | 5.471 |
+| habit_urbanismo | 5.086 | 480 | 383 | 3 | 0 | 5.395 |
+| assistencia | 5.382 | 187 | 154 | 0 | 0 | 5.466 |
+| transporte | 2.984 | 2.225 | 1.391 | 360 | 1 | 4.220 |
+| administracao | 5.447 | 122 | 109 | 0 | 0 | 5.474 |
+| agricultura | 4.245 | 1.191 | 858 | 133 | 1 | 4.999 |
+| comunicacoes | 328 | 1.568 | 609 | 3.673 | 2 | 958 |
+| assist_previdencia | 5.407 | 162 | 133 | 0 | 0 | 5.469 |
+
+- Nos grupos Saúde+Saneamento e Habitação+Urbanismo, a função pequena (Saneamento 3.17, Habitação 3.16) tem cobertura irregular, mas o grupo aparece quase sempre por causa da função grande.
+- Zeros e negativos nas 9 dependentes principais (conferido no `base_regressao.rds`): 7 negativos (Assistência 1, Transporte 1, Administração 5) e 4 zeros (Transporte 1, Agricultura 1, Comunicações 2). Mantidos como estão (no log, zero e negativo viram NA).
+- `base_regressao.rds`: 71.307 município-anos, 5.569 municípios, 4.769 presentes nos 13 anos.
+- **DECISÃO TOMADA (opção A):** ausência não vira zero. Quando o município não informa nenhuma função do grupo no ano, a variável fica NA e o município-ano sai daquela regressão (regra já implementada no `01_base_regressao.R`; não mudar). Robustez: Transporte, Agricultura e Comunicações reestimados só com os municípios que informam a função em todos os anos em que aparecem no Siconfi (teste R9 do `05_robustez.R`).
+
 ## A VER DEPOIS: qualidade dos dados e cuidados (não resolvido)
-1. **Ausência ≠ zero.** A classificação por função/subfunção é feita pela prefeitura; um gasto pode estar lançado em outra conta (ex.: publicidade em Administração Geral 04.122/04.999 ou dentro da própria área). Não preencher automaticamente com 0 ao pivotar.
-   - Funções grandes (Saúde, Educação, Urbanismo, Administração, Assistência, ~5.400 municípios/ano): ausência rara; zero é aceitável.
-   - Funções com cobertura parcial: Comunicações (~950 municípios/ano, caindo de 1.165 para 851), Habitação (~1.400), Saneamento (~3.200), Transporte (~4.200), Agricultura (~5.000). Avaliar amostra restrita aos municípios que informam a conta de forma regular.
-   - Com efeito fixo de município, quem nunca usa a conta não afeta o coeficiente; o risco são municípios que alternam a classificação entre anos (variação artificial).
-   - Antes de decidir: tabela por variável com nº de municípios que informam valor em todos os 13 anos, em parte dos anos e em nenhum.
+1. *(Resolvido: ver seção "Cobertura das funções e ausências".)*
 2. **Comunicações (função 24) é sobretudo infraestrutura** (telecomunicações, postais, demais subfunções). Gasto com publicidade/divulgação fica em Comunicação Social (`3.04.131`, ~1.040 municípios/ano, 0,15% do gasto). Decidido por ora usar só a função 24 (comparação com Sakurai); `3.04.131` fica como possível extensão. Se usada junto com Administração, definir Administração = 3.04.000 − 3.04.131.
 3. **Lei eleitoral (Lei 9.504/1997, art. 73)**: proíbe publicidade institucional nos 3 meses antes da eleição e limita gastos com publicidade no ano eleitoral. Com dado anual, alta no 1º semestre e bloqueio no 2º podem se compensar. Conferir redação vigente.
 4. **Participação no total como robustez**: rodar também com a participação de cada grupo na despesa total (%), como Teixeira e Mattos (2021); mostra recomposição melhor que o per capita.
@@ -114,7 +173,8 @@ Diferenças em relação ao Sakurai a declarar na metodologia: deflator IPCA (el
 8. **Especificação**: não usar efeito fixo de ano junto com a dummy de ano eleitoral (colinear; todos os municípios votam no mesmo ano). Sakurai usou tendência linear e quadrática. Erros-padrão agrupados por município; Hausman clássico e robusto.
 
 ## Pendências
-Cobertura temporal: PIB municipal sai com defasagem, então os anos finais podem ficar nulos. Siconfi 2025 tem menos municípios (~5.440 contra ~5.550). Receitas têm queda de cobertura em 2014 (~5.180 municípios).
+Cobertura temporal: PIB municipal só até 2023 (por isso entra só na robustez R7; o PIB nacional cobre 2013-2025). Siconfi 2025 tem menos municípios (~5.440 contra ~5.550). Receitas têm queda de cobertura em 2014 (~5.180 municípios). População 2024-25 já corrigida (ver IBGE anual).
+- Rodar os scripts de R na base real (até agora só testados em painel simulado) e conferir as contagens e os % de vazios que o `01` imprime.
 - 49 municípios sem prefeito eleito em 2024 (provavelmente eleição anulada sem suplementar na base): documentar como limitação.
 - Despesas por função no corpo do trabalho; investimentos (Anexo 2, natureza da despesa, municipio_despesas_orcamentarias) ficam como robustez.
 Variáveis do Censo não variam o suficiente para sobreviver a efeitos fixos de município. Úteis para descritivas e heterogeneidade.
@@ -124,6 +184,7 @@ Responder em português.
 Manter o padrão de cache por os.path.exists em cada consulta ao BigQuery.
 Caminhos de arquivo sempre via `codigo/caminhos.py` (novos arquivos: criar a constante lá primeiro).
 Scripts rodam em VS Code com células # %%; usar print em vez de display em .py.
+R: todo script começa com `source(here::here("regressao", "00_configuracao.R"))`; nunca usar `setwd` nem caminho absoluto; arquivos em UTF-8; nomes de coluna com acento sempre entre aspas (`c("Variável" = ...)`), senão o script quebra em computador com outra codificação. Os scripts têm de rodar tanto no terminal (`Rscript`) quanto no RStudio.
 Em GROUP BY, usar nomes de colunas em vez de posições (GROUP BY 1, 2...).
 Antes de afirmar algo sobre a estrutura dos dados, verificar com código. Não supor hierarquia de contas.
 Antes de mudar uma regra que altera variáveis do modelo, mostrar o efeito (antes × depois) e pedir aprovação.
