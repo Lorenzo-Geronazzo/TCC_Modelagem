@@ -17,6 +17,7 @@ __pycache__/
 # Os caches são recriados por download (Base dos Dados/TSE) quando não existem.
 dados/cache/*
 !dados/cache/ipca_mensal.csv
+!dados/cache/pib_nacional_trimestral.csv
 dados/finais/
 backups/
 obsoletos/

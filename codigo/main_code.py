@@ -407,14 +407,17 @@ if os.path.exists(caminho_ibge_anual):
     print("Dados do IBGE carregados do arquivo local!")
 else:
     print("Baixando PIB e População via Base dos Dados...")
+    # Parte da população (vai até 2025) e traz o PIB municipal (só até 2023)
+    # com LEFT JOIN. Com INNER JOIN, a população de 2024-25 era descartada
+    # junto com o PIB inexistente, e todo per capita ficava vazio nesses anos.
     query_ibge = """
-    SELECT 
-        p.ano, 
-        p.id_municipio, 
-        p.pib, 
+    SELECT
+        pop.ano,
+        pop.id_municipio,
+        p.pib,
         pop.populacao
-    FROM `basedosdados.br_ibge_pib.municipio` p
-    INNER JOIN `basedosdados.br_ibge_populacao.municipio` pop
+    FROM `basedosdados.br_ibge_populacao.municipio` AS pop
+    LEFT JOIN `basedosdados.br_ibge_pib.municipio` AS p
         ON p.ano = pop.ano AND p.id_municipio = pop.id_municipio
     """
     df_ibge_anual = bd.read_sql(query=query_ibge, billing_project_id="monografia-508123")

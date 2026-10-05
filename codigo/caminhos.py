@@ -34,10 +34,11 @@ SICONFI_DESPESAS = CACHE / "base_siconfi_despesas.parquet"
 PREFEITOS = CACHE / "base_prefeitos_v3.parquet"
 GOV_PRES = CACHE / "base_gov_pres_v2.parquet"
 GOV_PRES_2010 = CACHE / "base_gov_pres_2010.parquet"
-IBGE_ANUAL = CACHE / "base_ibge_anual.parquet"
+IBGE_ANUAL = CACHE / "base_ibge_anual_v2.parquet"   # v2: população com LEFT JOIN do PIB
 CATALOGO_RECEITAS = CACHE / "catalogo_receitas.parquet"
 SICONFI_RECEITAS = CACHE / "base_siconfi_receitas.parquet"
 IPCA_MENSAL = CACHE / "ipca_mensal.csv"
+PIB_NACIONAL_TRIMESTRAL = CACHE / "pib_nacional_trimestral.csv"   # SIDRA 1846 (versionado no Git)
 
 # Caches dos testes de hierarquia das receitas (codigo/exploracao/teste_mae_filho.py)
 TESTE_TODAS_MAES = CACHE / "teste_todas_maes.parquet"

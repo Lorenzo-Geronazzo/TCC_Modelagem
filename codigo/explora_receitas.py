@@ -18,7 +18,7 @@ for _pasta in [Path.cwd(), *Path.cwd().parents]:
     if (_pasta / "codigo" / "caminhos.py").exists():
         sys.path.insert(0, str(_pasta / "codigo"))
         break
-from caminhos import CATALOGO_RECEITAS, CATALOGO_RECEITAS_XLSX, SICONFI_RECEITAS, RECEITAS_MUNICIPIO_ANO, RECEITAS_MUNICIPIO_ANO_CSV, PAINEL_ELEICOES, PAINEL_ELEICOES_RECEITAS, IPCA_MENSAL, PAINEL_FINAL_REAL
+from caminhos import CATALOGO_RECEITAS, CATALOGO_RECEITAS_XLSX, SICONFI_RECEITAS, RECEITAS_MUNICIPIO_ANO, RECEITAS_MUNICIPIO_ANO_CSV, PAINEL_ELEICOES, PAINEL_ELEICOES_RECEITAS, IPCA_MENSAL, PIB_NACIONAL_TRIMESTRAL, PAINEL_FINAL_REAL
 
 ANO_INICIAL = 2013  # mesmo recorte do painel de despesas
 
@@ -265,6 +265,43 @@ if len(incompletos):
 print("\nIPCA médio anual e fator de correção (preços de 2025):")
 print(ipca_anual.round(4))
 
+# 2b) PIB nacional anual (controle principal, como Sakurai, 2009)
+# Fonte: SIDRA/IBGE, tabela 1846 (Contas Nacionais Trimestrais), variável 585
+#        "Valores a preços correntes" (R$ milhões), classificação 11255 = 90707
+#        "PIB a preços de mercado". PIB do ano = soma dos 4 trimestres.
+# A tabela anual (6784, Contas Nacionais Anuais) só vai até 2023, por isso a
+# trimestral. Os valores de 2024 e 2025 são preliminares (o IBGE ainda revisa).
+caminho_pib_nacional = PIB_NACIONAL_TRIMESTRAL
+if os.path.exists(caminho_pib_nacional):
+    pib_tri = pd.read_csv(caminho_pib_nacional, dtype={"trimestre": str})
+    print("\nPIB nacional trimestral carregado do arquivo local!")
+else:
+    url = (f"https://apisidra.ibge.gov.br/values/t/1846/n1/all/v/585/"
+           f"p/{ANO_INICIAL}01-{ANO_BASE}04/c11255/90707")
+    resposta = requests.get(url, timeout=60)
+    resposta.raise_for_status()
+    dados = resposta.json()                 # a 1ª linha é o cabeçalho
+    # Acha a coluna do código do trimestre pelo cabeçalho (não pela posição)
+    col_trimestre = next(k for k, v in dados[0].items() if v == "Trimestre (Código)")
+    pib_tri = pd.DataFrame(dados[1:])[[col_trimestre, "V"]].rename(
+        columns={col_trimestre: "trimestre", "V": "pib_milhoes"})
+    pib_tri.to_csv(caminho_pib_nacional, index=False)
+    print("\nPIB nacional trimestral baixado do SIDRA e salvo localmente!")
+
+pib_tri["pib_milhoes"] = pd.to_numeric(pib_tri["pib_milhoes"], errors="coerce")
+pib_tri["ano"] = pib_tri["trimestre"].str[:4].astype(int)
+
+# Soma os trimestres e passa de R$ milhões para R$ (mesma unidade do PIB municipal)
+pib_nacional = pib_tri.groupby("ano").agg(trimestres=("pib_milhoes", "count"), pib_milhoes=("pib_milhoes", "sum"))
+pib_nacional["pib_nacional"] = pib_nacional["pib_milhoes"] * 1_000_000
+
+# Confere: todo ano precisa ter os 4 trimestres, senão a soma está incompleta
+incompletos = pib_nacional[pib_nacional["trimestres"] != 4]
+if len(incompletos):
+    print("ATENÇÃO: anos com menos de 4 trimestres de PIB:", list(incompletos.index))
+print("\nPIB nacional anual (R$ milhões, preços correntes):")
+print(pib_nacional[["trimestres", "pib_milhoes"]])
+
 # %%
 # 3) Aplica o fator às colunas monetárias do painel
 painel = pd.read_parquet(PAINEL_ELEICOES_RECEITAS)
@@ -291,6 +328,13 @@ print(f"\nLinhas sem fator de IPCA: {painel['fator_2025'].isna().sum()}  (tem qu
 for col in COLUNAS_MONETARIAS:
     if col in painel.columns:
         painel[f"{col}_real"] = painel[col] * painel["fator_2025"]
+
+# PIB nacional: mesmo valor para todos os municípios do ano, deflacionado pelo
+# mesmo IPCA médio. Fica fora de COLUNAS_MONETARIAS porque não faz sentido
+# dividi-lo pela população do município.
+painel = painel.merge(pib_nacional[["pib_nacional"]], left_on="ano", right_index=True, how="left")
+painel["pib_nacional_real"] = painel["pib_nacional"] * painel["fator_2025"]
+print(f"Linhas sem PIB nacional: {painel['pib_nacional'].isna().sum()}  (tem que ser 0)")
 
 # 4) Per capita e logs a partir dos valores reais
 #    (dividir pela população antes ou depois de deflacionar dá o mesmo resultado;
