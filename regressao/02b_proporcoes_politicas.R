@@ -55,6 +55,7 @@ tex <- c(
   "\\hline",
   "\\end{tabular}",
   "\\fonte{Elaboração própria com dados do TSE.}",
+  "\\nota{Percentuais calculados sobre os município-anos com a informação disponível; ficam de fora os municípios sem prefeito definido no ano (por exemplo, 49 em 2025).}",
   "\\end{table}"
 )
 
