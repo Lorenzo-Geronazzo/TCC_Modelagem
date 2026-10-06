@@ -31,9 +31,11 @@ BASE_REGRESSAO    <- here("dados", "finais", "base_regressao.rds")
 PASTA_TABELAS     <- here("regressao", "saidas", "tabelas")
 PASTA_GRAFICOS    <- here("regressao", "saidas", "graficos")
 PASTA_MODELOS     <- here("regressao", "saidas", "modelos")
+PASTA_TAB_LATEX   <- here("regressao", "saidas", "tabelas", "latex")
 dir.create(PASTA_TABELAS, recursive = TRUE, showWarnings = FALSE)
 dir.create(PASTA_GRAFICOS, recursive = TRUE, showWarnings = FALSE)
 dir.create(PASTA_MODELOS, recursive = TRUE, showWarnings = FALSE)
+dir.create(PASTA_TAB_LATEX, recursive = TRUE, showWarnings = FALSE)
 
 # ------------------------------------------------------------------------------
 # 3) Definições do estudo
@@ -217,6 +219,10 @@ NOTA_A <- paste("Efeito fixo de município. Erros-padrão de Driscoll-Kraay entr
                 "*** p<0,01; ** p<0,05; * p<0,1.")
 NOTA_B <- paste("Efeitos fixos de município e de ano. Erros-padrão agrupados por município",
                 "entre parênteses. *** p<0,01; ** p<0,05; * p<0,1.")
+# Tabelas de robustez com os dois modelos (05_robustez.R e 06_tabelas_latex.R)
+NOTA_AB <- paste("Modelo A: efeito fixo de município, erros-padrão de Driscoll-Kraay.",
+                 "Modelo B: efeitos fixos de município e de ano, erros-padrão agrupados por município.",
+                 "Erros-padrão entre parênteses. *** p<0,01; ** p<0,05; * p<0,1.")
 
 # Carrega a base de regressão (gerada por 01_base_regressao.R)
 # limpa = TRUE (padrão): tira os município-anos com outlier_despesa == 1

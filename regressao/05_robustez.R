@@ -79,10 +79,6 @@ tabela_ab <- function(mods_A = NULL, vars_A = MOSTRA_A, vcov_A = vcov_dk,
   tab
 }
 
-NOTA_AB <- paste("Modelo A: efeito fixo de município, erros-padrão de Driscoll-Kraay.",
-                 "Modelo B: efeitos fixos de município e de ano, erros-padrão agrupados por município.",
-                 "Erros-padrão entre parênteses. *** p<0,01; ** p<0,05; * p<0,1.")
-
 roda_teste <- function(codigo, titulo, tab, nota = NOTA_AB) {
   message("Robustez ", codigo, ": ", titulo)
   salva_tabela(tab, paste0("robustez_", codigo),
