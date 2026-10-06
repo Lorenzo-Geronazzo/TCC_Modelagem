@@ -474,7 +474,9 @@ df_urb_2010_clean = df_urb_2010_pivot[['id_municipio', 'grau_urb_2010']]
 # ---------------------------------------------------------
 # Definição das faixas etárias para as tabelas de Idade
 # ---------------------------------------------------------
-jovens = ['0 a 4 anos', '5 a 9 anos', '10 a 14 anos', '15 a 19 anos', '20 a 24 anos']
+# Jovens = 0 a 19 anos (decisão da autora: faixa usual de demanda por educação).
+# As duas tabelas (2010 e 2022) têm as faixas de 5 anos separadas até 15-19.
+jovens = ['0 a 4 anos', '5 a 9 anos', '10 a 14 anos', '15 a 19 anos']
 idosos = ['65 a 69 anos', '70 a 74 anos', '75 a 79 anos', '80 a 84 anos', '85 a 89 anos', '90 a 94 anos', '95 a 99 anos', '100 anos ou mais']
 
 # ---------------------------------------------------------

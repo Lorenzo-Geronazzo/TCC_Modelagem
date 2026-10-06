@@ -1,10 +1,12 @@
 # %%
 # ==============================================================================
-# EXPLORAÇÃO DAS RECEITAS ORÇAMENTÁRIAS (SICONFI) - FORA DO PAINEL PRINCIPAL
+# RECEITAS ORÇAMENTÁRIAS (SICONFI), DEFLAÇÃO E PIB NACIONAL
 # ==============================================================================
-# Objetivo: gerar arquivos separados para decidir quais contas de receita
-# (ex.: receita tributária, transferências correntes) entram no painel.
-# Nada aqui é juntado ao painel_final_eleicoes.
+# Célula 1: catálogo das contas de receita (só exploração).
+# Célula 2: base município-ano das contas escolhidas (receitas_municipio_ano).
+# Célula 3: junta as receitas ao painel (painel_final_eleicoes_receitas).
+# Célula 4: deflaciona pelo IPCA, acrescenta o PIB nacional e salva a base
+#           final (painel_final_real).
 import basedosdados as bd
 import pandas as pd
 import os
@@ -48,7 +50,14 @@ else:
         SUM(dados.valor) AS soma_valor
     FROM `basedosdados.br_me_siconfi.municipio_receitas_orcamentarias` AS dados
     WHERE dados.ano >= {ANO_INICIAL}
-    GROUP BY 1, 2, 3, 4, 5, 6, 7
+    GROUP BY
+        dados.ano,
+        dados.estagio,
+        dados.estagio_bd,
+        dados.portaria,
+        dados.conta,
+        dados.id_conta_bd,
+        dados.conta_bd
     """
     df_cat_ano = bd.read_sql(query=query_catalogo, billing_project_id="monografia-508123")
     df_cat_ano.to_parquet(caminho_catalogo, index=False)
@@ -173,7 +182,7 @@ if ESTAGIOS_BD:
 # Pré-requisito: Célula 2 rodada com
 #   ESTAGIOS_BD = ['Receitas Brutas Realizadas']
 #   CONTAS_BD   = ['1.1.1.0.0.00.00.00', '1.1.7.0.0.00.00.00']
-# Contas validadas por município-ano (teste_todas_maes.py):
+# Contas validadas por município-ano (codigo/exploracao/teste_mae_filho.py):
 #   1.1.1.0 = Impostos + Taxas + Contribuição de Melhoria (100%)
 #   1.1.7.0 = soma das filhas diretas 1.7.X (100%, exceto ~2 casos em 2013)
 import pandas as pd
@@ -302,7 +311,6 @@ if len(incompletos):
 print("\nPIB nacional anual (R$ milhões, preços correntes):")
 print(pib_nacional[["trimestres", "pib_milhoes"]])
 
-# %%
 # 3) Aplica o fator às colunas monetárias do painel
 painel = pd.read_parquet(PAINEL_ELEICOES_RECEITAS)
 

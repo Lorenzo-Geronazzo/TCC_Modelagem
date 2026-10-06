@@ -30,8 +30,10 @@ PAINEL_FINAL_REAL <- here("dados", "finais", "painel_final_real.parquet")
 BASE_REGRESSAO    <- here("dados", "finais", "base_regressao.rds")
 PASTA_TABELAS     <- here("regressao", "saidas", "tabelas")
 PASTA_GRAFICOS    <- here("regressao", "saidas", "graficos")
+PASTA_MODELOS     <- here("regressao", "saidas", "modelos")
 dir.create(PASTA_TABELAS, recursive = TRUE, showWarnings = FALSE)
 dir.create(PASTA_GRAFICOS, recursive = TRUE, showWarnings = FALSE)
+dir.create(PASTA_MODELOS, recursive = TRUE, showWarnings = FALSE)
 
 # ------------------------------------------------------------------------------
 # 3) Definições do estudo

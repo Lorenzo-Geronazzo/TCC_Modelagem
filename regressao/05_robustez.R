@@ -15,6 +15,8 @@
 #   R6  Inclui prefeito em segundo mandato (A e B)
 #   R7  PIB municipal per capita, amostra 2013-2023 (A: no lugar do PIB
 #       nacional; B: somado aos controles) (A e B)
+#   R7a Especificação principal só na amostra 2013-2023, sem trocar o PIB
+#       (separa o efeito da amostra do efeito do PIB municipal no R7) (A e B)
 #   R8  Assistência + Previdência (agrupamento do Sakurai) (A e B)
 #   R9  Transporte, Agricultura e Comunicações só com municípios que informam
 #       a função em todos os anos em que aparecem na base (A e B)
@@ -25,6 +27,7 @@
 #   R12 Modelo A com erro-padrão agrupado por município (só modelo A)
 #   R13 Modelo B com erro-padrão de Driscoll-Kraay (só modelo B)
 #   R14 Modelo A sem a dummy de pandemia (só modelo A)
+#   R15 Sem as variáveis do Censo (perc_jovens, perc_idosos, grau_urb) (A e B)
 source(here::here("regressao", "00_configuracao.R"))
 base <- carrega_base()
 
@@ -43,7 +46,10 @@ estima <- function(dados, x, efeito, sufixo_y = "_pc", prefixo_y = "", dependent
   modelos <- list()
   for (v in dependentes) {
     y <- paste0(prefixo_y, v, sufixo_y)
-    if (!y %in% names(dados)) next
+    if (!y %in% names(dados)) {
+      warning("Variável dependente não encontrada na base: ", y, " (pulada)")
+      next
+    }
     modelos[[rotulo(v)]] <- plm(monta_formula(y, x), data = pdados, model = "within", effect = efeito)
   }
   modelos
@@ -128,6 +134,11 @@ roda_teste("R7", "PIB municipal per capita (2013-2023)",
            tabela_ab(estima_A(base_r7, x_a7), vars_A = c(MOSTRA_A, "ln_pib_mun_pc"),
                      mods_B = estima_B(base_r7, x_b7)))
 
+# R7a — especificação principal (sem trocar o PIB) só na amostra 2013-2023.
+# Comparar com o R7 separa o efeito da amostra do efeito do PIB municipal.
+roda_teste("R7a", "especificação principal na amostra 2013-2023",
+           tabela_ab(estima_A(base_r7), mods_B = estima_B(base_r7)))
+
 # R8 — Assistência + Previdência, como Sakurai
 roda_teste("R8", "Assistência e Previdência somadas (Sakurai, 2009)",
            tabela_ab(estima_A(base, dependentes = "assist_previdencia"),
@@ -187,5 +198,11 @@ roda_teste("R14", "modelo A sem a dummy de pandemia",
            tabela_ab(estima_A(base, setdiff(X_A, "pandemia_2020"))),
            nota = paste("Só modelo A: efeito fixo de município, sem a dummy de pandemia.",
                         "Erros-padrão de Driscoll-Kraay entre parênteses. *** p<0,01; ** p<0,05; * p<0,1."))
+
+# R15 — sem as variáveis do Censo (nos dois modelos). Elas só variam dentro do
+# município pela interpolação 2010-2022 e ficam constantes em 2023-2025.
+CENSO <- c("perc_jovens", "perc_idosos", "grau_urb")
+roda_teste("R15", "sem as variáveis do Censo (jovens, idosos, urbanização)",
+           tabela_ab(estima_A(base, setdiff(X_A, CENSO)), mods_B = estima_B(base, setdiff(X_B, CENSO))))
 
 message("Testes de robustez concluídos.")

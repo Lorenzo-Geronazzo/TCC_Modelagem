@@ -63,9 +63,3 @@ NAO_BATEM_TODAS_MAES = SAIDAS_EXPLORACAO / "nao_batem_todas_maes.csv"
 RESUMO_TODAS_MAES = SAIDAS_EXPLORACAO / "resumo_todas_maes.csv"
 TRIB_AINDA_NAO_BATEM = SAIDAS_EXPLORACAO / "trib_ainda_nao_batem.csv"
 TRANSF_NAO_BATEM = SAIDAS_EXPLORACAO / "transf_nao_batem.csv"
-
-# ------------------------------------------------------------------------------
-# Obsoletos (só usados por codigo/exploracao/teste_nomemclatura_partidos.py)
-# ------------------------------------------------------------------------------
-PREFEITOS_V1 = OBSOLETOS / "base_prefeitos.parquet"
-GOV_PRES_V1 = OBSOLETOS / "base_gov_pres.parquet"

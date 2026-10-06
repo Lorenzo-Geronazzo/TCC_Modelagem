@@ -2,8 +2,8 @@
 # 01b_cobertura.R — tabela de cobertura das funções de despesa (decisão sobre zeros)
 # ==============================================================================
 # Pergunta: quantos municípios informam cada função em todos os anos, em parte
-# dos anos ou em nenhum? Serve para decidir o que fazer com as ausências
-# (CLAUDE.md, "A VER DEPOIS", item 1: ausência não é zero).
+# dos anos ou em nenhum? Serviu para a decisão sobre as ausências
+# (CLAUDE.md, "Cobertura das funções e ausências": ausência não é zero).
 #
 # Entrada: dados/finais/painel_final_real.parquet
 # Saída:   regressao/saidas/tabelas/cobertura_funcoes.csv/.docx

@@ -1,8 +1,8 @@
 # ==============================================================================
 # 03_hausman.R — pooled, efeitos fixos, efeitos aleatórios e teste de Hausman
 # ==============================================================================
-# Para cada variável dependente:
-#   - estima pooled (MQO), efeitos fixos (within) e efeitos aleatórios;
+# Para cada variável dependente, com a especificação do modelo A:
+#   - estima efeitos fixos (within) e efeitos aleatórios;
 #   - teste de Hausman clássico (H0: efeitos aleatórios é consistente e eficiente);
 #   - teste de Hausman robusto (versão de Mundlak, com erros agrupados por município),
 #     porque o clássico supõe erros homocedásticos e sem correlação no tempo.

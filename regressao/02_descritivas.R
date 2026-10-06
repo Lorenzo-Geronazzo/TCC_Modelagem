@@ -4,8 +4,8 @@
 # Saídas (regressao/saidas/):
 #   tabelas/descritivas_explicativas.(csv|docx)  — média, desvio-padrão, mín., máx., N
 #   tabelas/descritivas_dependentes.(csv|docx)   — o mesmo para as dependentes per capita
-#   graficos/serie_<variavel>.png                — média anual, em nível e em log,
-#                                                   com anos eleitorais e pré-eleitorais marcados
+#   graficos/serie_<variavel>_nivel.png e        — média anual, em nível e em log,
+#   graficos/serie_<variavel>_log.png              com anos eleitorais e pré-eleitorais marcados
 #   graficos/series_todas_log.png                — as 9 variáveis num painel só (log)
 source(here::here("regressao", "00_configuracao.R"))
 base <- carrega_base()
@@ -18,11 +18,11 @@ descreve <- function(dados, variaveis) {
     x <- dados[[v]]
     data.frame(
       "Variável" = rotulo(v),
-      N               = format(sum(!is.na(x)), big.mark = ".", decimal.mark = ","),
-      Média           = round(mean(x, na.rm = TRUE), 3),
-      `Desvio-padrão` = round(sd(x, na.rm = TRUE), 3),
-      Mínimo          = round(min(x, na.rm = TRUE), 3),
-      Máximo          = round(max(x, na.rm = TRUE), 3),
+      "N"             = format(sum(!is.na(x)), big.mark = ".", decimal.mark = ","),
+      "Média"         = round(mean(x, na.rm = TRUE), 3),
+      "Desvio-padrão" = round(sd(x, na.rm = TRUE), 3),
+      "Mínimo"        = round(min(x, na.rm = TRUE), 3),
+      "Máximo"        = round(max(x, na.rm = TRUE), 3),
       check.names = FALSE
     )
   }))
@@ -38,7 +38,7 @@ salva_tabela(tab_x, "descritivas_explicativas",
 
 dep_pc <- paste0(DEPENDENTES, "_pc")
 tab_y <- descreve(base, dep_pc)
-tab_y$Variável <- rotulo(DEPENDENTES)
+tab_y[["Variável"]] <- rotulo(DEPENDENTES)
 print(tab_y)
 salva_tabela(tab_y, "descritivas_dependentes",
              titulo = "Estatísticas descritivas das despesas per capita (R$ de 2025)",

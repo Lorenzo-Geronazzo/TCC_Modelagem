@@ -176,7 +176,7 @@ print(data.frame(
 ))
 
 message("\nValores vazios nas explicativas (%):")
-print(sapply(c(INTERESSE, CONTROLES), function(v) round(100 * mean(is.na(base[[v]])), 1)))
+print(sapply(c(INTERESSE_A, CONTROLES), function(v) round(100 * mean(is.na(base[[v]])), 1)))
 
 saveRDS(base, BASE_REGRESSAO)
 message("\nSalvo: ", BASE_REGRESSAO)

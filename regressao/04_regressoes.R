@@ -56,7 +56,7 @@ salva_tabela(tab_B, "regressao_principal_B",
              nota = paste("Variáveis dependentes: despesa per capita por grupo de funções (R$ de 2025).",
                           NOTA_B))
 
-saveRDS(list(A = modelos_A, B = modelos_B), file.path(PASTA_TABELAS, "modelos_principais.rds"))
+saveRDS(list(A = modelos_A, B = modelos_B), file.path(PASTA_MODELOS, "modelos_principais.rds"))
 
 # ------------------------------------------------------------------------------
 # 3) Comparação pooled x efeitos fixos x efeitos aleatórios (despesa total),
