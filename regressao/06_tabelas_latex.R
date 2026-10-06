@@ -3,8 +3,9 @@
 # ==============================================================================
 # NÃO reestima nada: lê os .csv que o 04 e o 05 salvaram em regressao/saidas/tabelas/
 # e escreve um .tex para cada um, no estilo da Tabela 2 de Sakurai (2009):
-# página em paisagem, grupos de despesa nas colunas, variáveis nas linhas,
-# erro-padrão entre parênteses embaixo do coeficiente, estrelas, e Observações,
+# tabela girada (sidewaystable, pacote rotating) numa página própria, grupos de
+# despesa nas colunas, variáveis nas linhas, erro-padrão entre parênteses embaixo
+# do coeficiente, estrelas, ponto de milhar nos números acima de mil, e Observações,
 # Municípios e R² no fim. Nos testes com os dois modelos, as linhas marcadas com
 # "[modelo A]" e "[modelo B]" no .csv viram dois blocos ("painéis") na tabela.
 #
@@ -95,9 +96,17 @@ formata_celula <- function(x) {
   x
 }
 
+# Ponto de milhar na parte inteira dos números com vírgula decimal
+# (ex.: -13602,563*** vira -13.602,563***; (2842,870) vira (2.842,870)).
+# Observações e Municípios já vêm com ponto e não têm vírgula: ficam iguais.
+poe_milhar <- function(x) gsub("(\\d)(?=(\\d{3})+,)", "\\1.", x, perl = TRUE)
+
+# Lê um .csv de resultados (tudo como texto), já com ponto de milhar nos números
 le_csv <- function(nome) {
-  read.csv2(file.path(PASTA_TABELAS, paste0(nome, ".csv")), colClasses = "character",
-            check.names = FALSE, fileEncoding = "UTF-8", na.strings = character(0))
+  tab <- read.csv2(file.path(PASTA_TABELAS, paste0(nome, ".csv")), colClasses = "character",
+                   check.names = FALSE, fileEncoding = "UTF-8", na.strings = character(0))
+  tab[-1] <- lapply(tab[-1], poe_milhar)
+  tab
 }
 
 # Uma linha da tabela: rótulo & célula & célula ... \\
@@ -149,13 +158,13 @@ espec_colunas <- function(celulas) {
          paste0(">{\\centering\\arraybackslash}p{", larguras, "pt}", collapse = ""), "@{}")
 }
 
-# Monta o ambiente completo (paisagem + table + tabular).
+# Monta o ambiente completo (sidewaystable + tabular). A sidewaystable vai
+# sozinha para uma página girada, e o texto continua na página anterior.
 # Tabelas longas (o modelo A) têm as linhas um pouco mais juntas, para caber na página.
 monta_tabela <- function(nome, titulo, celulas, corpo, nota_tex) {
   colunas <- names(celulas)
   c("% Gerado por regressao/06_tabelas_latex.R (projeto Modelagem). Não editar à mão.",
-    "\\begin{landscape}",
-    "\\begin{table}[htbp]",
+    "\\begin{sidewaystable}",
     sprintf("\\caption{%s}\\label{tab:%s}", escapa(titulo), nome),
     "\\centering",
     "\\footnotesize",
@@ -171,8 +180,7 @@ monta_tabela <- function(nome, titulo, celulas, corpo, nota_tex) {
     "\\end{tabular}",
     "\\fonte{Elaboração própria.}",
     sprintf("\\nota{%s}", nota_tex),
-    "\\end{table}",
-    "\\end{landscape}")
+    "\\end{sidewaystable}")
 }
 
 salva_tex <- function(linhas, nome) {
