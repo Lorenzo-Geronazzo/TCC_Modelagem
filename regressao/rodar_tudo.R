@@ -11,6 +11,7 @@ if (!requireNamespace("here", quietly = TRUE)) install.packages("here", repos = 
 source(here::here("regressao", "01_base_regressao.R"))
 source(here::here("regressao", "01b_cobertura.R"))
 source(here::here("regressao", "02_descritivas.R"))
+source(here::here("regressao", "02b_proporcoes_politicas.R"))
 source(here::here("regressao", "03_hausman.R"))
 source(here::here("regressao", "04_regressoes.R"))
 source(here::here("regressao", "05_robustez.R"))
