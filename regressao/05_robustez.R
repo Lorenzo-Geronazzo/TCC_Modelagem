@@ -28,6 +28,9 @@
 #   R13 Modelo B com erro-padrão de Driscoll-Kraay (só modelo B)
 #   R14 Modelo A sem a dummy de pandemia (só modelo A)
 #   R15 Sem as variáveis do Censo (perc_jovens, perc_idosos, grau_urb) (A e B)
+#   R16 Ano eleitoral e pré-eleitoral separados por eleição: eleicao_2016,
+#       eleicao_2024 (2020 fica com a pandemia), pre_2015, pre_2019 e pre_2023
+#       (só modelo A, erro Driscoll-Kraay)
 source(here::here("regressao", "00_configuracao.R"))
 base <- carrega_base()
 
@@ -204,5 +207,25 @@ roda_teste("R14", "modelo A sem a dummy de pandemia",
 CENSO <- c("perc_jovens", "perc_idosos", "grau_urb")
 roda_teste("R15", "sem as variáveis do Censo (jovens, idosos, urbanização)",
            tabela_ab(estima_A(base, setdiff(X_A, CENSO)), mods_B = estima_B(base, setdiff(X_B, CENSO))))
+
+# R16 — ano eleitoral e pré-eleitoral separados por eleição (só modelo A).
+# ano_eleitoral vira eleicao_2016 e eleicao_2024 (2020 continua absorvido por
+# pandemia_2020); pre_eleitoral vira pre_2015, pre_2019 e pre_2023.
+POR_ELEICAO <- c("eleicao_2016", "eleicao_2024", "pre_2015", "pre_2019", "pre_2023")
+ROTULOS[POR_ELEICAO] <- c("Ano eleitoral de 2016", "Ano eleitoral de 2024",
+                          "Ano pré-eleitoral de 2015", "Ano pré-eleitoral de 2019",
+                          "Ano pré-eleitoral de 2023")
+base_r16 <- base |>
+  mutate(eleicao_2016 = as.integer(ano == 2016),
+         eleicao_2024 = as.integer(ano == 2024),
+         pre_2015     = as.integer(ano == 2015),
+         pre_2019     = as.integer(ano == 2019),
+         pre_2023     = as.integer(ano == 2023))
+x_a16 <- c(POR_ELEICAO, setdiff(X_A, c("ano_eleitoral", "pre_eleitoral")))
+roda_teste("R16", "ano eleitoral e pré-eleitoral separados por eleição (modelo A)",
+           tabela_ab(estima_A(base_r16, x_a16), vars_A = POR_ELEICAO),
+           nota = paste("Só modelo A: efeito fixo de município; ano eleitoral e pré-eleitoral",
+                        "separados por eleição (2020 absorvido pela dummy de pandemia).",
+                        "Erros-padrão de Driscoll-Kraay entre parênteses. *** p<0,01; ** p<0,05; * p<0,1."))
 
 message("Testes de robustez concluídos.")
