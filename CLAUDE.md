@@ -1,7 +1,7 @@
 # Contexto do projeto: TCC em Ciências Econômicas (UFPR)
 
 ## Tema
-Ciclos Políticos Orçamentários e finanças municipais no Brasil. Analisa como as despesas dos municípios respondem ao ciclo eleitoral e ao alinhamento político do prefeito com governador e presidente. Metodologia: painel município-ano seguindo Sakurai (2009): estimar pooled, efeitos fixos e efeitos aleatórios, teste de Hausman (clássico e robusto) e reportar o modelo escolhido. Controles do Sakurai: receita tributária e receita de transferências correntes, demografia, população. Estimação em R (`arrow`, `dplyr`, `tidyr`, `plm`, `lmtest`, `sandwich`, `ggplot2`, `scales`, `flextable`, `here`); ver seção "Regressão em R".
+Ciclos Políticos Orçamentários e finanças municipais no Brasil. Analisa como as despesas dos municípios respondem ao ciclo eleitoral e ao alinhamento político do prefeito com governador e presidente. Metodologia: painel município-ano com efeitos fixos, em dois modelos (A: ciclo eleitoral, efeito fixo de município, erro-padrão de Driscoll-Kraay; B: coalizões, efeitos fixos de município e de ano, erro-padrão agrupado por município), teste de Hausman clássico e robusto, e a especificação de Sakurai (2009) como teste de robustez (R5). Controles do Sakurai: receita tributária e receita de transferências correntes, demografia, população. Estimação em R (`arrow`, `dplyr`, `tidyr`, `plm`, `lmtest`, `sandwich`, `ggplot2`, `scales`, `flextable`, `here`); ver seção "Regressão em R".
 
 ## Estado atual da base (leia primeiro)
 - **Base final: `dados/finais/painel_final_real.parquet`** (valores deflacionados, R$ de 2025). Não versionada no git (ver Estrutura de pastas); recriar rodando o pipeline.
@@ -111,6 +111,8 @@ Regra de montagem dos grupos (`01_base_regressao.R`): soma das funções do grup
 - **Modelo B ("coalizões")**: efeitos fixos de município e de ano (`effect = "twoways"`), `coalizao_gov` + `coalizao_pres` (`INTERESSE_B`) + `CONTROLES_B`, erro-padrão **agrupado por município**. Tabela `regressao_principal_B`.
   - `CONTROLES_B` (só os que variam entre municípios): `receita_tributaria_real_pc`, `transf_correntes_real_pc`, `perc_jovens`, `perc_idosos`, `grau_urb`, `ln_populacao`. Ano eleitoral, pré-eleitoral, pandemia, PIB nacional e tendências saem (colineares com o efeito de ano).
 - Leitura dos coeficientes: ano eleitoral e pré-eleitoral vêm do modelo A; coalizões vêm do modelo B.
+- Identificação do ano eleitoral: como `pandemia_2020` = 1 em 2020, que também é ano eleitoral, no modelo A o efeito do ano eleitoral vem das eleições de 2016 e 2024. No R7 (2013-2023), só de 2016.
+- Driscoll-Kraay depende de muitos períodos (aqui T = 13). Critério de leitura: resultado sólido = significativo com Driscoll-Kraay (principal) E com erro agrupado por município (R12).
 - `INTERESSE` antigo (`ano_eleitoral`, `coalizao_gov`, `coalizao_pres`) continua no `00_configuracao.R`: é a especificação de Sakurai (2009), usada nas descritivas e no teste R5.
 - Rótulos novos: `pre_eleitoral` = "Ano pré-eleitoral", `pandemia_2020` = "Pandemia (2020)".
 - Notas das tabelas: `NOTA_A` (efeito fixo de município, Driscoll-Kraay) e `NOTA_B` (efeitos fixos de município e de ano, agrupado por município), no `00_configuracao.R`.
@@ -119,7 +121,7 @@ Regra de montagem dos grupos (`01_base_regressao.R`): soma das funções do grup
 
 ## Regressão em R
 Scripts em `regressao/`, rodar na ordem (ou tudo pelo `rodar_tudo.R`):
-- `00_configuracao.R`: instala/carrega pacotes, caminhos (`here`), anos eleitorais, `GRUPOS`, `DEPENDENTES`, rótulos, `INTERESSE`, `CONTROLES`, `METODO_RE` e funções auxiliares (fórmula, erro-padrão agrupado, tabela de regressão, salvar tabela em .csv/.docx, Hausman robusto, `carrega_base(limpa = TRUE)`). Mudar a especificação aqui, não nos outros scripts. `carrega_base()` (padrão `limpa = TRUE`) tira os município-anos com `outlier_despesa == 1`; `carrega_base(limpa = FALSE)` devolve a base inteira (usado no R10 e no R11). 02, 03 e 04 chamam `carrega_base()`, ou seja, com limpeza.
+- `00_configuracao.R`: instala/carrega pacotes, caminhos (`here`), anos eleitorais, `GRUPOS`, `DEPENDENTES`, rótulos, `INTERESSE_A`, `INTERESSE_B`, `INTERESSE` (especificação de Sakurai), `CONTROLES`, `CONTROLES_B`, `METODO_RE`, `NOTA_EP`, `NOTA_A`, `NOTA_B` e funções auxiliares (fórmula, erro-padrão agrupado `vcov_cluster`, erro-padrão de Driscoll-Kraay `vcov_dk`, tabela de regressão, salvar tabela em .csv/.docx, Hausman robusto, `carrega_base(limpa = TRUE)`). Mudar a especificação aqui, não nos outros scripts. `carrega_base()` (padrão `limpa = TRUE`) tira os município-anos com `outlier_despesa == 1`; `carrega_base(limpa = FALSE)` devolve a base inteira (usado no R10 e no R11). 02, 03 e 04 chamam `carrega_base()`, ou seja, com limpeza.
 - `01_base_regressao.R`: lê só as colunas necessárias do painel, soma as funções em grupos, junta os atributos do município-ano (para se um município-ano tiver atributos diferentes entre linhas), cria per capita, logs, participações, dummies de tempo e tendências; aplica as marcações de limpeza (ver "Limpeza da base"); imprime contagens e % de vazios; salva `dados/finais/base_regressao.rds`.
 - `01b_cobertura.R`: tabela de cobertura das funções e dos grupos (municípios que informam em todos os anos, em parte, com buraco, em nenhum; linhas com valor zero; municípios por ano). Base para a decisão de "A VER DEPOIS", item 1.
 - `02_descritivas.R`: tabelas descritivas (N, média, desvio-padrão, mínimo, máximo) das explicativas e das dependentes; gráfico da média anual de cada dependente per capita, em nível e em log, com faixas no ano eleitoral (laranja escuro) e pré-eleitoral (amarelo); painel com todas em log.
@@ -147,7 +149,7 @@ Teste de Hausman com a especificação do modelo A (`03_hausman.R` → `regressa
 | Comunicações | 148,78 | 1,26e-24 | 35,64 | 2,04e-05 | Efeitos fixos | Efeitos fixos | 12.360 | 1.896 |
 
 - Rodado na base real com os modelos A e B: 01 (24 s), 03 Hausman (38 s), 04 modelos A e B + comparação (281 s) e 05 robustez R1-R14 (1.491 s); total ~30 min. O modelo B (`effect = "twoways"`) é o mais lento no `plm`. Tabelas em `regressao/saidas/tabelas/`: `hausman`, `regressao_principal_A`, `regressao_principal_B`, `comparacao_estimadores_despesa_total`, `robustez_R1` a `robustez_R14` (.csv e .docx).
-- Formatação das tabelas (`tabela_regressao()` no 00): coeficientes, erros-padrão e R² com vírgula decimal (`formatC(..., format = "f", decimal.mark = ",")`, ex.: 203,869); ponto de milhar só em Observações/Municípios. Argumento `vcov_fun` (padrão `vcov_cluster`) escolhe a matriz de variância; `roda_teste()` no 05 aceita `vcov_fun` e `nota`.
+- Formatação das tabelas (`tabela_regressao()` no 00): coeficientes, erros-padrão e R² com vírgula decimal (`formatC(..., format = "f", decimal.mark = ",")`, ex.: 203,869); ponto de milhar só em Observações/Municípios. Argumento `vcov_fun` (padrão `vcov_cluster`) escolhe a matriz de variância. No 05, quem escolhe o erro-padrão é a `tabela_ab()` (argumentos `vcov_A`, padrão `vcov_dk`, e `vcov_B`, padrão `vcov_cluster`); `roda_teste()` recebe a tabela pronta e a nota.
 
 ## Cobertura das funções e ausências (RESOLVIDO; antigo "A VER DEPOIS", item 1)
 **Ausência ≠ zero.** A classificação por função/subfunção é feita pela prefeitura; um gasto pode estar lançado em outra conta (ex.: publicidade em Administração Geral 04.122/04.999 ou dentro da própria área). Não preencher automaticamente com 0.
@@ -199,11 +201,11 @@ Feita no `01_base_regressao.R` (etapa 5b). A base salva NÃO apaga linhas nem va
 1. *(Resolvido: ver seção "Cobertura das funções e ausências".)*
 2. **Comunicações (função 24) é sobretudo infraestrutura** (telecomunicações, postais, demais subfunções). Gasto com publicidade/divulgação fica em Comunicação Social (`3.04.131`, ~1.040 municípios/ano, 0,15% do gasto). Decidido por ora usar só a função 24 (comparação com Sakurai); `3.04.131` fica como possível extensão. Se usada junto com Administração, definir Administração = 3.04.000 − 3.04.131.
 3. **Lei eleitoral (Lei 9.504/1997, art. 73)**: proíbe publicidade institucional nos 3 meses antes da eleição e limita gastos com publicidade no ano eleitoral. Com dado anual, alta no 1º semestre e bloqueio no 2º podem se compensar. Conferir redação vigente.
-4. **Participação no total como robustez**: rodar também com a participação de cada grupo na despesa total (%), como Teixeira e Mattos (2021); mostra recomposição melhor que o per capita.
+4. *(Resolvido: feito no teste R4, participação de cada grupo na despesa total, %, como Teixeira e Mattos, 2021.)*
 5. **Vinculações constitucionais**: mínimos de Saúde (15%) e Educação (25%) das receitas de impostos limitam a margem do prefeito; usar na interpretação.
 6. **Subfunções não comparáveis antes de 2016** ("Administração Geral" 122 surge em 2016, antes estava em 999). Só afeta se alguma subfunção for usada.
-7. **Forma funcional**: Sakurai usa per capita em nível (coeficientes em R$ per capita). Para comparar diretamente, usar a mesma forma; log como alternativa.
-8. **Especificação**: não usar efeito fixo de ano junto com a dummy de ano eleitoral (colinear; todos os municípios votam no mesmo ano). Sakurai usou tendência linear e quadrática. Erros-padrão agrupados por município; Hausman clássico e robusto.
+7. *(Resolvido: forma principal per capita em nível, como Sakurai; log feito no teste R3.)*
+8. *(Resolvido: substituído pela seção "Variáveis explicativas e especificação: modelos A e B". O efeito de ano é usado no modelo B, sem a dummy de ano eleitoral; o modelo A mantém o ano eleitoral com tendências e erro-padrão de Driscoll-Kraay.)*
 
 ## Pendências
 Cobertura temporal: PIB municipal só até 2023 (por isso entra só na robustez R7; o PIB nacional cobre 2013-2025). Siconfi 2025 tem menos municípios (~5.440 contra ~5.550). Receitas têm queda de cobertura em 2014 (~5.180 municípios). População 2024-25 já corrigida (ver IBGE anual).
