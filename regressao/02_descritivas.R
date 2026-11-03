@@ -29,7 +29,7 @@ descreve <- function(dados, variaveis) {
 }
 
 explicativas <- c(INTERESSE, "pre_eleitoral", "segundo_mandato",
-                  setdiff(CONTROLES, c("tendencia", "tendencia2")))
+                  setdiff(CONTROLES_NIVEL, c("tendencia", "tendencia2")))   # em reais, como sempre
 tab_x <- descreve(base, explicativas)
 print(tab_x)
 salva_tabela(tab_x, "descritivas_explicativas",

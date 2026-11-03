@@ -81,11 +81,14 @@ ROTULOS <- c(
   segundo_mandato    = "Prefeito em segundo mandato",
   receita_tributaria_real_pc = "Receita tributária per capita (R$)",
   transf_correntes_real_pc   = "Transferências correntes per capita (R$)",
+  ln1p_receita_tributaria_real_pc = "Receita tributária per capita, ln(1 + x)",
+  ln1p_transf_correntes_real_pc   = "Transferências correntes per capita, ln(1 + x)",
   perc_jovens        = "Proporção de jovens",
   perc_idosos        = "Proporção de idosos",
   grau_urb           = "Grau de urbanização",
   ln_populacao       = "População (log)",
   pib_nacional_tri   = "PIB nacional (R$ trilhões)",
+  ln_pib_nacional_real = "PIB nacional real (log)",
   ln_pib_mun_pc      = "PIB municipal per capita (log)",
   tendencia          = "Tendência",
   tendencia2         = "Tendência ao quadrado",
@@ -93,6 +96,8 @@ ROTULOS <- c(
 )
 
 # Especificação (ver CLAUDE.md, "Especificação: modelos A e B")
+# Principal em log: dependente e receitas em ln(1 + valor per capita, R$ de 2025),
+# com negativo virando NA (colunas ln1p_*, criadas no 01); PIB nacional em ln.
 # Modelo A ("ciclo eleitoral"): efeito fixo de município, INTERESSE_A + CONTROLES,
 #   erro-padrão de Driscoll-Kraay (robusto a choques comuns aos municípios no ano).
 # Modelo B ("coalizões"): efeitos fixos de município e de ano, coalizões +
@@ -101,12 +106,18 @@ ROTULOS <- c(
 INTERESSE_A <- c("ano_eleitoral", "pre_eleitoral", "pandemia_2020",
                  "coalizao_gov", "coalizao_pres")
 INTERESSE_B <- c("coalizao_gov", "coalizao_pres")
-CONTROLES <- c("receita_tributaria_real_pc", "transf_correntes_real_pc",
+CONTROLES <- c("ln1p_receita_tributaria_real_pc", "ln1p_transf_correntes_real_pc",
                "perc_jovens", "perc_idosos", "grau_urb", "ln_populacao",
-               "pib_nacional_tri", "tendencia", "tendencia2")
+               "ln_pib_nacional_real", "tendencia", "tendencia2")
 # Controles que variam entre municípios (os únicos que sobram com efeito de ano)
-CONTROLES_B <- c("receita_tributaria_real_pc", "transf_correntes_real_pc",
+CONTROLES_B <- c("ln1p_receita_tributaria_real_pc", "ln1p_transf_correntes_real_pc",
                  "perc_jovens", "perc_idosos", "grau_urb", "ln_populacao")
+# Especificação em nível (a antiga principal): usada no teste R3 e nas descritivas
+CONTROLES_NIVEL <- c("receita_tributaria_real_pc", "transf_correntes_real_pc",
+                     "perc_jovens", "perc_idosos", "grau_urb", "ln_populacao",
+                     "pib_nacional_tri", "tendencia", "tendencia2")
+CONTROLES_B_NIVEL <- c("receita_tributaria_real_pc", "transf_correntes_real_pc",
+                       "perc_jovens", "perc_idosos", "grau_urb", "ln_populacao")
 # Especificação de Sakurai (2009): usada nas descritivas e no teste de robustez R5
 INTERESSE <- c("ano_eleitoral", "coalizao_gov", "coalizao_pres")
 
@@ -114,6 +125,13 @@ INTERESSE <- c("ano_eleitoral", "coalizao_gov", "coalizao_pres")
 # 4) Funções auxiliares
 # ------------------------------------------------------------------------------
 rotulo <- function(x) ifelse(x %in% names(ROTULOS), ROTULOS[x], x)
+
+# ln(1 + x): o zero vira ln(1) = 0 e fica na regressão; negativo vira NA
+# (o NA é colocado antes do log, para não gerar o aviso "NaNs produced")
+ln1p <- function(x) log1p(ifelse(x < 0, NA, x))
+
+# Nome da variável dependente principal: ln(1 + despesa per capita)
+dep_log <- function(v) paste0("ln1p_", v, "_pc")
 
 # Método dos efeitos aleatórios. O padrão do plm (Swamy-Arora) usa uma regressão
 # "between" (médias por município); as variáveis que só mudam com o ano (ano
@@ -138,10 +156,12 @@ estrelas <- function(p) ifelse(p < 0.01, "***", ifelse(p < 0.05, "**", ifelse(p 
 # Tabela de regressão: coeficiente (com estrelas) e erro-padrão entre parênteses.
 # modelos: lista nomeada de modelos plm; vars: variáveis a mostrar (NULL = todas)
 # vcov_fun: função que calcula a matriz de variância (padrão: agrupada por município)
-# Números com vírgula decimal (ex.: 203,869); ponto de milhar só em Observações/Municípios.
+# digitos: casas de coeficientes e erros-padrão; 4 na especificação em log (coeficientes
+# pequenos) e 3 no R3 (nível) e no R4 (%). O R² fica sempre com 3.
+# Números com vírgula decimal (ex.: 0,0519); ponto de milhar só em Observações/Municípios.
 num_virgula <- function(x, digitos) formatC(x, format = "f", digits = digitos, decimal.mark = ",")
 
-tabela_regressao <- function(modelos, vars = NULL, digitos = 3, vcov_fun = vcov_cluster) {
+tabela_regressao <- function(modelos, vars = NULL, digitos = 4, vcov_fun = vcov_cluster) {
   colunas <- lapply(names(modelos), function(nome) {
     m  <- modelos[[nome]]
     ct <- coeftest(m, vcov. = vcov_fun(m))
@@ -200,7 +220,7 @@ salva_tabela <- function(tabela, nome, titulo = NULL, nota = NULL) {
 # Variáveis que só mudam com o ano (ano eleitoral, tendências, PIB nacional) ficam
 # fora das médias: elas não variam entre municípios.
 hausman_mundlak <- function(dados, y, x, so_tempo = c("ano_eleitoral", "pre_eleitoral", "pandemia_2020",
-                                                     "tendencia", "tendencia2", "pib_nacional_tri")) {
+                                                     "tendencia", "tendencia2", "ln_pib_nacional_real")) {
   d <- dados[stats::complete.cases(dados[, c(y, x)]), c("id_municipio", y, x)]
   com_media <- setdiff(x, so_tempo)
   for (v in com_media) d[[paste0("media_", v)]] <- ave(d[[v]], d$id_municipio)
@@ -213,16 +233,29 @@ hausman_mundlak <- function(dados, y, x, so_tempo = c("ano_eleitoral", "pre_elei
   list(statistic = estat, df = sum(ok), p.value = pchisq(estat, df = sum(ok), lower.tail = FALSE))
 }
 
+# Leitura da especificação em log (repetida nas notas das tabelas)
+NOTA_LOG <- paste("Variável dependente e receitas em logaritmo de (1 + valor per capita, R$ de 2025).",
+                  "O coeficiente de uma dummy se lê como variação percentual aproximada",
+                  "(exata: 100 × (exp(b) − 1)).")
 NOTA_EP <- paste("Erros-padrão agrupados por município entre parênteses.",
                  "*** p<0,01; ** p<0,05; * p<0,1.")
-NOTA_A <- paste("Efeito fixo de município. Erros-padrão de Driscoll-Kraay entre parênteses.",
+NOTA_A <- paste(NOTA_LOG, "PIB nacional em log.",
+                "Efeito fixo de município. Erros-padrão de Driscoll-Kraay entre parênteses.",
                 "*** p<0,01; ** p<0,05; * p<0,1.")
-NOTA_B <- paste("Efeitos fixos de município e de ano. Erros-padrão agrupados por município",
+NOTA_B <- paste(NOTA_LOG,
+                "Efeitos fixos de município e de ano. Erros-padrão agrupados por município",
                 "entre parênteses. *** p<0,01; ** p<0,05; * p<0,1.")
 # Tabelas de robustez com os dois modelos (05_robustez.R e 06_tabelas_latex.R)
-NOTA_AB <- paste("Modelo A: efeito fixo de município, erros-padrão de Driscoll-Kraay.",
-                 "Modelo B: efeitos fixos de município e de ano, erros-padrão agrupados por município.",
-                 "Erros-padrão entre parênteses. *** p<0,01; ** p<0,05; * p<0,1.")
+NOTA_AB_MODELOS <- paste("Modelo A: efeito fixo de município, erros-padrão de Driscoll-Kraay.",
+                         "Modelo B: efeitos fixos de município e de ano, erros-padrão agrupados por município.",
+                         "Erros-padrão entre parênteses. *** p<0,01; ** p<0,05; * p<0,1.")
+NOTA_AB <- paste(NOTA_LOG, NOTA_AB_MODELOS)
+# R3 (em nível) e R4 (participação): a leitura do coeficiente é outra
+NOTA_R3 <- paste("Especificação em nível: dependente em R$ de 2025 per capita, receitas em R$ per capita",
+                 "e PIB nacional em R$ trilhões.", NOTA_AB_MODELOS)
+NOTA_R4 <- paste("Variável dependente: participação do grupo na despesa total (%); o coeficiente de uma",
+                 "dummy se lê em pontos percentuais. Receitas em logaritmo de (1 + valor per capita,",
+                 "R$ de 2025).", NOTA_AB_MODELOS)
 
 # Carrega a base de regressão (gerada por 01_base_regressao.R)
 # limpa = TRUE (padrão): tira os município-anos com outlier_despesa == 1

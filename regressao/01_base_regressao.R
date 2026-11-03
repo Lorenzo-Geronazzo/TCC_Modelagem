@@ -10,6 +10,7 @@
 #   3. Soma as funções em cada grupo (variáveis dependentes) e a despesa total.
 #   4. Junta os atributos do município-ano (política, receitas, controles).
 #   5. Cria per capita, ano eleitoral, pré-eleitoral e tendências.
+#   5c. Cria as colunas em log da especificação principal (ln1p_*, ln_pib_nacional_real).
 source(here::here("regressao", "00_configuracao.R"))
 
 # ------------------------------------------------------------------------------
@@ -154,6 +155,26 @@ message("  receita tributária: TO 2024 = ",
 message("  despesa: outlier_despesa = 1 em ", sum(base$outlier_despesa), " município-anos")
 message("  município-anos sem limpeza: ", nrow(base),
         " | com limpeza (outlier_despesa == 0): ", sum(base$outlier_despesa == 0))
+
+# ------------------------------------------------------------------------------
+# 5c) Colunas em log da especificação principal (ver CLAUDE.md). Criadas depois
+#     da limpeza, para a receita tributária já estar corrigida. As colunas ln_*_pc
+#     acima são ln(x) e continuam na base (usadas nos gráficos em log).
+#     ln1p_* = ln(1 + x): o zero vira 0 e fica na regressão; negativo vira NA.
+# ------------------------------------------------------------------------------
+for (v in c(paste0(todas_dep, "_pc"), "receita_tributaria_real_pc", "transf_correntes_real_pc",
+            "receita_tributaria_real_pc_bruta")) {
+  base[[paste0("ln1p_", v)]] <- ln1p(base[[v]])
+}
+base$ln_pib_nacional_real <- log(base$pib_nacional_real)   # sem o +1: nunca é zero
+
+message("\nColunas em ln(1 + x) — negativos que viram NA:")
+print(data.frame(
+  variavel = c(paste0(DEPENDENTES, "_pc"), "receita_tributaria_real_pc_bruta"),
+  negativo = sapply(c(paste0(DEPENDENTES, "_pc"), "receita_tributaria_real_pc_bruta"),
+                    function(v) sum(base[[v]] < 0, na.rm = TRUE)),
+  row.names = NULL
+))
 
 # ------------------------------------------------------------------------------
 # 6) Conferências e salvamento

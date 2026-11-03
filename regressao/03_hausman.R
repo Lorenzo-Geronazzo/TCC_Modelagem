@@ -1,7 +1,7 @@
 # ==============================================================================
 # 03_hausman.R — pooled, efeitos fixos, efeitos aleatórios e teste de Hausman
 # ==============================================================================
-# Para cada variável dependente, com a especificação do modelo A:
+# Para cada variável dependente em ln(1 + x), com a especificação do modelo A:
 #   - estima efeitos fixos (within) e efeitos aleatórios;
 #   - teste de Hausman clássico (H0: efeitos aleatórios é consistente e eficiente);
 #   - teste de Hausman robusto (versão de Mundlak, com erros agrupados por município),
@@ -14,7 +14,7 @@ pbase <- pdata.frame(base, index = c("id_municipio", "ano"))
 
 resultados <- list()
 for (v in DEPENDENTES) {
-  y <- paste0(v, "_pc")
+  y <- dep_log(v)
   f <- monta_formula(y, c(INTERESSE_A, CONTROLES))   # modelo A
   message("Hausman: ", rotulo(v))
 
@@ -46,4 +46,5 @@ print(tab_h, row.names = FALSE)
 salva_tabela(tab_h, "hausman",
              titulo = "Teste de Hausman: efeitos fixos x efeitos aleatórios",
              nota = paste("H0: o estimador de efeitos aleatórios é consistente e eficiente.",
-                          "Robusto: teste de Mundlak (médias por município das explicativas), com erros agrupados por município."))
+                          "Robusto: teste de Mundlak (médias por município das explicativas), com erros agrupados por município.",
+                          "Especificação do modelo A em log (dependente e receitas em ln(1 + x), PIB nacional em ln)."))

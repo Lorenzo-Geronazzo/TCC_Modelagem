@@ -20,7 +20,7 @@ source(here::here("regressao", "00_configuracao.R"))
 # 1) Títulos e notas (os mesmos textos dos .docx gerados pelo 04 e pelo 05;
 #    se mudar um título ou nota lá, mudar aqui também)
 # ------------------------------------------------------------------------------
-NOTA_DEP <- "Variáveis dependentes: despesa per capita por grupo de funções (R$ de 2025)."
+NOTA_DEP <- "Variáveis dependentes: ln(1 + despesa per capita por grupo de funções, R$ de 2025)."
 NOTA_DK  <- "Erros-padrão de Driscoll-Kraay entre parênteses. *** p<0,01; ** p<0,05; * p<0,1."
 
 TABELAS <- list(
@@ -37,26 +37,26 @@ TABELAS <- list(
 TESTES <- list(
   R1  = list("coalizões sem fusões de partidos"),
   R2  = list("sem prefeitos/governadores de eleição suplementar"),
-  R3  = list("variável dependente em log"),
-  R4  = list("participação na despesa total (%)"),
+  R3  = list("especificação em nível", NOTA_R3),
+  R4  = list("participação na despesa total (%)", NOTA_R4),
   R5  = list("especificação de Sakurai (sem pré-eleitoral e sem pandemia, erro agrupado)",
-             paste("Só modelo A: efeito fixo de município, sem ano pré-eleitoral e sem pandemia.", NOTA_EP)),
+             paste(NOTA_LOG, "Só modelo A: efeito fixo de município, sem ano pré-eleitoral e sem pandemia.", NOTA_EP)),
   R6  = list("inclui prefeito em segundo mandato"),
   R7  = list("PIB municipal per capita (2013-2023)"),
   R7a = list("especificação principal na amostra 2013-2023"),
   R8  = list("Assistência e Previdência somadas (Sakurai, 2009)"),
   R9  = list("só municípios que informam a função em todos os anos"),
   R10 = list("sem limpeza (outliers de despesa e receita original)"),
-  R11 = list("dependentes winsorizadas nos percentis 1 e 99 de cada ano"),
+  R11 = list("dependentes winsorizadas em reais nos percentis 1 e 99 de cada ano, antes do log"),
   R12 = list("modelo A com erro-padrão agrupado por município",
-             paste("Só modelo A: efeito fixo de município.", NOTA_EP)),
+             paste(NOTA_LOG, "Só modelo A: efeito fixo de município.", NOTA_EP)),
   R13 = list("modelo B com erro-padrão de Driscoll-Kraay",
-             paste("Só modelo B: efeitos fixos de município e de ano.", NOTA_DK)),
+             paste(NOTA_LOG, "Só modelo B: efeitos fixos de município e de ano.", NOTA_DK)),
   R14 = list("modelo A sem a dummy de pandemia",
-             paste("Só modelo A: efeito fixo de município, sem a dummy de pandemia.", NOTA_DK)),
+             paste(NOTA_LOG, "Só modelo A: efeito fixo de município, sem a dummy de pandemia.", NOTA_DK)),
   R15 = list("sem as variáveis do Censo (jovens, idosos, urbanização)"),
   R16 = list("ano eleitoral e pré-eleitoral separados por eleição (modelo A)",
-             paste("Só modelo A: efeito fixo de município; ano eleitoral e pré-eleitoral",
+             paste(NOTA_LOG, "Só modelo A: efeito fixo de município; ano eleitoral e pré-eleitoral",
                    "separados por eleição (2020 absorvido pela dummy de pandemia).", NOTA_DK))
 )
 for (codigo in names(TESTES)) {
@@ -86,6 +86,8 @@ escapa <- function(x) {
 escapa_nota <- function(x) {
   x <- escapa(x)
   x <- gsub("(\\*+) p<", "\\\\textsuperscript{\\1}p$<$", x)
+  x <- gsub("×", "$\\times$", x, fixed = TRUE)
+  x <- gsub("−", "$-$", x, fixed = TRUE)
   x
 }
 
@@ -274,7 +276,9 @@ for (k in seq_along(BLOCOS_RESUMO)) {
   }
 }
 nota_resumo <- paste(
-  "Coeficientes do modelo A (efeito fixo de município), em R\\$ de 2025 per capita.",
+  "Coeficientes do modelo A (efeito fixo de município). Variável dependente e receitas em",
+  "logaritmo de (1 + valor per capita, R\\$ de 2025); o coeficiente de uma dummy se lê como",
+  "variação percentual aproximada (exata: 100 $\\times$ (exp(b) $-$ 1)).",
   "Modelo principal e R14: erros-padrão de Driscoll-Kraay;",
   "R5 e R12: erros-padrão agrupados por município.",
   "O R5 segue \\textcite{sakurai2009}: sem ano pré-eleitoral e sem dummy de pandemia;",
