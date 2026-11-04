@@ -4,10 +4,10 @@ Ciclos Políticos Orçamentários e finanças municipais no Brasil (2013-2025)
 
 Documento de estudo para a defesa na banca. Explica cada decisão do trabalho, por que foi tomada, o que se testou no lugar e onde ela está no código.
 
-**De onde vêm os números.** Todos os números deste memorial vêm do `CLAUDE.md` ou das tabelas em `regressao/saidas/tabelas/`, na versão de 05/10/2026: % jovens = 0-19 anos, modelos A e B, testes R1 a R16 e R7a.
+**De onde vêm os números.** Todos os números deste memorial vêm do `CLAUDE.md` ou das tabelas em `regressao/saidas/tabelas/`, na versão de 02/11/2026: especificação em log, % jovens = 0-19 anos, modelos A e B, testes R1 a R16 e R7a. As tabelas anteriores, em nível, estão em `backups/tabelas_nivel_2026-11-02/`.
 
 **Unidades.**
-- Coeficientes das despesas: R$ de 2025 por habitante (per capita em nível), salvo quando indicado.
+- Coeficientes das despesas: dependente em ln(1 + despesa per capita, R$ de 2025). O coeficiente b de uma dummy se lê como variação percentual aproximada; a exata é 100 × (exp(b) − 1). Valores em R$ só quando indicado (teste R3).
 - Estrelas: \*\*\* p<0,01; \*\* p<0,05; \* p<0,1; "n.s." = não significativo a 10%.
 
 **Formato de cada decisão** (sempre o mesmo):
@@ -20,7 +20,7 @@ Documento de estudo para a defesa na banca. Explica cada decisão do trabalho, p
 
 Os links de código apontam para o arquivo e a linha na versão atual.
 
-> Este memorial descreve o que foi feito e o que as tabelas mostram. A interpretação econômica dos resultados é da autora.
+> Este memorial descreve o que foi feito e o que as tabelas mostram. A interpretação econômica dos resultados é do autor.
 
 ---
 
@@ -93,12 +93,12 @@ A fonte principal é a **Base dos Dados** (BigQuery, projeto de cobrança `monog
   - Usar a linha de total `3.00.000` para a despesa total. Ela não existe em 2013, e o total sem código de 2013 bate com a soma das funções em só 99,5% dos municípios.
   - Usar subfunções. Não são comparáveis antes de 2016 ("Administração Geral" 122 surge em 2016).
 - **Efeito no resultado:** a despesa total tem uma definição única nos 13 anos. De 2014 em diante, é idêntica ao total oficial.
-- **Onde está no código:** [01_base_regressao.R:48](../regressao/01_base_regressao.R#L48).
+- **Onde está no código:** [01_base_regressao.R:49](../regressao/01_base_regressao.R#L49).
 
 ### 2.2 Despesas intraorçamentárias
 
 - **O que foi feito:** foram retiradas as linhas de despesa intraorçamentária (pagamentos entre órgãos do próprio município). Remove 20.504 linhas.
-- **Por quê:** é dinheiro que circula dentro da própria prefeitura. As linhas não têm código e o nome muda entre 2013 e 2014, então o filtro é pelo nome: contém "intra" e não contém "exceto".
+- **Por quê:** são operações entre órgãos, fundos e entidades do próprio município, e contariam o mesmo recurso duas vezes (Portaria Interministerial STN/SOF nº 338/2006: art. 1º, definição; primeiro considerando, dupla contagem; art. 3º, efeitos a partir de 2007). As linhas não têm código e o nome muda entre 2013 e 2014, então o filtro é pelo nome: contém "intra" e não contém "exceto".
 - **Alternativa considerada:** filtrar pelo nome exato. Isso tirava só 19.530 linhas e deixava as 974 de 2013.
 - **Efeito no resultado:** não muda as dependentes, que vêm das funções. Deixa o painel coerente.
 - **Onde está no código:** [main_code.py:60](../codigo/main_code.py#L60).
@@ -111,7 +111,7 @@ A fonte principal é a **Base dos Dados** (BigQuery, projeto de cobrança `monog
   - Se ninguém do mandato assumiu até essa data, o município-ano fica **sem prefeito**: partido, segundo mandato e coalizões ficam vazios, não 0. São 214 município-anos.
 - **Por quê:** com eleições suplementares, um município pode ter mais de um eleito no mesmo mandato, e isso duplicava linhas do painel.
 - **Alternativa considerada:** ficar sempre com o eleito na ordinária. Isso atribuiria o ano a quem já não governava.
-- **Efeito no resultado:** o teste **R2** retira os município-anos com prefeito ou governador de suplementar. O modelo A passa de 70.669 para 69.424 observações (Despesa total) e o padrão de significância do ano eleitoral se mantém (Despesa total 279,523\*\*\*).
+- **Efeito no resultado:** o teste **R2** retira os município-anos com prefeito ou governador de suplementar. O modelo A passa de 70.669 para 69.424 observações (Despesa total) e o padrão de significância do ano eleitoral se mantém (Despesa total 0,0519\*\*\*).
 - **Onde está no código:** [main_code.py:165](../codigo/main_code.py#L165).
 
 ### 2.4 Eleições suplementares
@@ -135,7 +135,7 @@ A fonte principal é a **Base dos Dados** (BigQuery, projeto de cobrança `monog
   - só quando falta o título, nome padronizado igual.
 - **Por quê:** o método anterior (comparar com a linha de cima) errava quando havia suplementares. Nos pares com os dois identificadores, CPF e título concordam em 99,9%.
 - **Alternativa considerada:** só o título. Há 5 casos com o mesmo CPF e título diferente (título trocado).
-- **Efeito no resultado:** 220 município-anos passaram de 0 para 1, nenhum de 1 para 0. A variável só entra na robustez (**R6**): os coeficientes de ano eleitoral e de coalizões quase não mudam (Despesa total 277,917\*\*\* no modelo A).
+- **Efeito no resultado:** 220 município-anos passaram de 0 para 1, nenhum de 1 para 0. A variável só entra na robustez (**R6**): os coeficientes de ano eleitoral e de coalizões quase não mudam (Despesa total 0,0520\*\*\* no modelo A).
 - **Onde está no código:** [main_code.py:152](../codigo/main_code.py#L152).
 
 ### 2.6 Siglas partidárias e fusões
@@ -148,7 +148,7 @@ A fonte principal é a **Base dos Dados** (BigQuery, projeto de cobrança `monog
 - **Alternativa considerada:** aplicar a fusão sempre. Isso geraria falsos 1, de cerca de 275 a 477 município-anos por ano em `coalizao_pres` em 2019-22. Por exemplo, um prefeito do DEM de 2016 e uma chapa PSL/PRTB de 2018 não eram aliados.
 - **Efeito no resultado:**
   - A padronização fez cerca de 830 município-anos por ano (governador) e cerca de 1.470 por ano (presidente) passarem de 0 para 1 em 2017-18; nenhum passou de 1 para 0.
-  - O teste **R1** (sem fusões, só renomeações) mantém a coalizão do governador na Despesa total (28,511\*\*\* contra 31,560\*\*\*). Em Saúde, ela passa de 4,704\*\* para 3,295 (n.s.).
+  - O teste **R1** (sem fusões, só renomeações) mantém a coalizão do governador na Despesa total (0,0034\*\*\* contra 0,0037\*\*\*). Em Administração, ela passa de 0,0070\*\*\* para 0,0061\*\*.
 - **Onde está no código:** [main_code.py:319](../codigo/main_code.py#L319) (`RENOMEACOES`), [main_code.py:338](../codigo/main_code.py#L338) (`FUSOES`) e [main_code.py:350](../codigo/main_code.py#L350) (`padroniza_sigla`).
 
 ### 2.7 Coligações de 2010
@@ -162,22 +162,22 @@ A fonte principal é a **Base dos Dados** (BigQuery, projeto de cobrança `monog
 ### 2.8 Deflação pelo IPCA médio anual
 
 - **O que foi feito:** valor real = valor nominal × (média do IPCA de 2025 ÷ média do IPCA do ano). Tudo fica em **R$ de 2025**. Foram deflacionadas a despesa, as receitas e o PIB.
-- **Por quê:** receitas, despesas e PIB são fluxos do ano civil (Lei 4.320, arts. 34-35; MCASP: a receita é registrada na arrecadação). Por isso o deflator é a média dos 12 meses, e não o índice de dezembro.
+- **Por quê:** o valor anual soma pagamentos feitos a preços de meses diferentes. Por isso o deflator é a média dos 12 meses: o índice de dezembro trataria pagamentos do início do ano como se fossem a preços de fim de ano. Por decisão do autor, o TCC não cita norma nesse ponto (a Lei 4.320 não trata de deflação).
 - **Alternativa considerada:** IGP-DI, usado por Sakurai (2009), em R$ de 2006. Fica como diferença declarada em relação a ele.
 - **Efeito no resultado:** nenhum teste específico. É diferença de método a declarar.
 - **Onde está no código:** [explora_receitas.py:268](../codigo/explora_receitas.py#L268).
 
 ### 2.9 PIB nacional como controle principal
 
-- **O que foi feito:** `pib_nacional_tri` = PIB nacional real em R$ trilhões, o mesmo valor para todos os municípios no ano, sem vazios de 2013 a 2025.
+- **O que foi feito:** `ln_pib_nacional_real` = logaritmo do PIB nacional real, o mesmo valor para todos os municípios no ano, sem vazios de 2013 a 2025. `pib_nacional_tri` (R$ trilhões) ficou para o R3 e as descritivas.
 - **Por quê:** é o controle de Sakurai (2009) e existe em todos os anos. O PIB municipal só vai até 2023.
 - **Alternativa considerada:** PIB municipal per capita (em log), que tiraria 2024-2025.
 - **Efeito no resultado:**
-  - **R7** (PIB municipal, 2013-2023): ano eleitoral na Despesa total = 129,219\*.
-  - **R7a** (especificação principal, mesma amostra 2013-2023): 66,596 (n.s.).
-  - No principal: 277,865\*\*\*.
-  - A comparação R7 × R7a mostra que a maior parte da mudança vem da amostra (sem 2024), não da troca do PIB.
-- **Onde está no código:** [01_base_regressao.R:110](../regressao/01_base_regressao.R#L110).
+  - **R7** (PIB municipal, 2013-2023): ano eleitoral na Despesa total = 0,0267\*\*\*.
+  - **R7a** (especificação principal, mesma amostra 2013-2023): 0,0306 (n.s.).
+  - No principal: 0,0519\*\*\*.
+  - Sem 2024, o coeficiente fica menor nos dois testes; a significância difere entre eles.
+- **Onde está no código:** [01_base_regressao.R:169](../regressao/01_base_regressao.R#L169).
 
 ---
 
@@ -197,19 +197,19 @@ A fonte principal é a **Base dos Dados** (BigQuery, projeto de cobrança `monog
 | 7 | Agricultura | 3.20 |
 | 8 | Comunicações | 3.24 |
 
-- **O que foi feito:** agrupamentos como os de Sakurai (2009), com três ajustes: Assistência sem Previdência, Administração incluída e Comunicações só com a função 24. Todas as variáveis estão em R$ de 2025 per capita, em nível.
+- **O que foi feito:** agrupamentos como os de Sakurai (2009), com três ajustes: Assistência sem Previdência, Administração incluída e Comunicações só com a função 24. Todas as variáveis estão em R$ de 2025 per capita e entram nos modelos em ln(1 + x).
 - **Por quê:**
   - Previdência (função 9, regime próprio) é gasto obrigatório, com pouca margem para o prefeito.
   - Administração é gasto pouco visível, citado por Teixeira e Mattos (2021).
   - Sakurai encontrou efeito positivo do ano eleitoral em Comunicações (0,280\*\*\*).
 - **Alternativa considerada:**
   - Assistência + Previdência, como Sakurai: teste **R8**.
-  - Variável em log: teste **R3**.
+  - Variável em nível: teste **R3**.
   - Participação na despesa total: teste **R4**.
 - **Efeito no resultado:**
-  - **R8:** ano eleitoral 10,004 (n.s.) e pré-eleitoral 10,708 (n.s.), contra 14,078\*\*\* e 9,468\*\* só com Assistência.
+  - **R8:** ano eleitoral 0,0377\*\*\* e pré-eleitoral 0,0260 (n.s.), contra 0,0678\*\*\* e 0,0355\* só com Assistência. Em nível, o ano eleitoral do R8 era 10,004 (n.s.; ver o backup).
   - R3 e R4: ver a seção 7.
-- **Onde está no código:** [00_configuracao.R:46](../regressao/00_configuracao.R#L46) (`GRUPOS`) e [01_base_regressao.R:61](../regressao/01_base_regressao.R#L61) (`soma_grupo`).
+- **Onde está no código:** [00_configuracao.R:48](../regressao/00_configuracao.R#L48) (`GRUPOS`) e [01_base_regressao.R:62](../regressao/01_base_regressao.R#L62) (`soma_grupo`).
 
 ### 3.2 Soma das funções e despesa total
 
@@ -217,7 +217,7 @@ A fonte principal é a **Base dos Dados** (BigQuery, projeto de cobrança `monog
 - **Por quê:** é a mesma definição em todos os anos e coerente com os grupos (ver 2.1).
 - **Alternativa considerada:** a linha de total oficial `3.00.000` (ver 2.1).
 - **Efeito no resultado:** sem teste específico.
-- **Onde está no código:** [01_base_regressao.R:68-75](../regressao/01_base_regressao.R#L68-L75).
+- **Onde está no código:** [01_base_regressao.R:69-76](../regressao/01_base_regressao.R#L69-L76).
 
 ### 3.3 Ausência ≠ zero
 
@@ -227,8 +227,8 @@ A fonte principal é a **Base dos Dados** (BigQuery, projeto de cobrança `monog
 - **Efeito no resultado:**
   - A cobertura é desigual. Média de municípios por ano: Comunicações 958, Transporte 4.220, Agricultura 4.999, Administração 5.474.
   - O teste **R9** usa só os municípios que informam a função em todos os anos em que aparecem (3.000 em Transporte, 4.264 em Agricultura, 330 em Comunicações).
-  - Resultados do R9: ano eleitoral em Transporte = 48,686\*\*\* (principal 41,741\*\*\*); Comunicações = −0,300\* (principal −0,801\*\*\*).
-- **Onde está no código:** [01_base_regressao.R:61-75](../regressao/01_base_regressao.R#L61-L75); cobertura em [01b_cobertura.R](../regressao/01b_cobertura.R); R9 em [05_robustez.R:150](../regressao/05_robustez.R#L150).
+  - Resultados do R9: ano eleitoral em Transporte = 0,1525\*\*\* (principal 0,1778\*\*\*); Comunicações = 0,0195 (n.s.; principal 0,0318\*\*\*).
+- **Onde está no código:** [01_base_regressao.R:62-76](../regressao/01_base_regressao.R#L62-L76); cobertura em [01b_cobertura.R](../regressao/01b_cobertura.R); R9 em [05_robustez.R:158](../regressao/05_robustez.R#L158).
 
 ---
 
@@ -253,32 +253,32 @@ A fonte principal é a **Base dos Dados** (BigQuery, projeto de cobrança `monog
   - Uma dummy para cada eleição: teste **R16**.
 - **Efeito no resultado:**
   - Com a dummy de pandemia, o ano eleitoral do modelo A é identificado pelas eleições de **2016 e 2024**.
-  - Sem a dummy (**R14**), Educação e Cultura passa de 49,079\* para −10,566 (n.s.).
-- **Onde está no código:** [01_base_regressao.R:102-104](../regressao/01_base_regressao.R#L102-L104) e [00_configuracao.R:99-101](../regressao/00_configuracao.R#L99-L101).
+  - Sem a dummy (**R14**), Educação e Cultura passa de 0,0343\*\* para −0,0078 (n.s.).
+- **Onde está no código:** [01_base_regressao.R:103-105](../regressao/01_base_regressao.R#L103-L105) e [00_configuracao.R:106-107](../regressao/00_configuracao.R#L106-L107).
 
 ### 4.2 Controles
 
 - **O que foi feito:**
-  - receita tributária per capita;
-  - transferências correntes per capita;
+  - receita tributária per capita, em ln(1 + x);
+  - transferências correntes per capita, em ln(1 + x);
   - % jovens, % idosos e grau de urbanização;
   - população (log);
-  - PIB nacional (R$ trilhões);
+  - PIB nacional real (log);
   - tendência (ano − 2012) e tendência ao quadrado.
   - No modelo B, só os seis primeiros desta lista (os que variam entre municípios).
 - **Por quê:** são os controles de Sakurai (2009), que também usou tendência linear e quadrática.
 - **Alternativa considerada:** PIB municipal (**R7**); sem as variáveis do Censo (**R15**).
 - **Efeito no resultado:** ver 4.4 e a seção 7.
-- **Onde está no código:** [00_configuracao.R:102-107](../regressao/00_configuracao.R#L102-L107); transformações em [01_base_regressao.R:106-111](../regressao/01_base_regressao.R#L106-L111).
+- **Onde está no código:** [00_configuracao.R:109-113](../regressao/00_configuracao.R#L109-L113); transformações em [01_base_regressao.R:107-112](../regressao/01_base_regressao.R#L107-L112) e [01_base_regressao.R:167-169](../regressao/01_base_regressao.R#L167-L169).
 
 ### 4.3 % jovens = 0-19 anos
 
 - **O que foi feito:** `perc_jovens` = população de 0 a 19 anos ÷ população total, como proporção de 0 a 1.
-- **Por quê:** decisão da autora (05/10/2026): é a faixa usual de demanda por educação. As duas tabelas do Censo têm as faixas 0-4, 5-9, 10-14 e 15-19 separadas de 20-24, então 0-19 é exato nos dois censos.
+- **Por quê:** decisão do autor (05/10/2026): é a faixa usual de demanda por educação. As duas tabelas do Censo têm as faixas 0-4, 5-9, 10-14 e 15-19 separadas de 20-24, então 0-19 é exato nos dois censos.
 - **Alternativa considerada:** 0-24 anos, que o código usava antes por engano (incluía "20 a 24 anos").
 - **Efeito no resultado:**
   - A média de `perc_jovens` caiu de 0,410 para 0,328 em 2013 e de 0,347 para 0,275 em 2022-2025. A correlação entre as duas versões é 0,992.
-  - Nas regressões, os coeficientes de interesse quase não mudaram. A única mudança de significância foi o ano eleitoral em Educação e Cultura (de 49,116, n.s., para 49,079\*).
+  - Nas regressões, os coeficientes de interesse quase não mudaram. Na especificação em nível da época, a única mudança de significância foi o ano eleitoral em Educação e Cultura (de 49,116, n.s., para 49,079\*).
 - **Onde está no código:** [main_code.py:479](../codigo/main_code.py#L479).
 
 ### 4.4 O problema das variáveis do Censo com efeito fixo
@@ -290,10 +290,11 @@ A fonte principal é a **Base dos Dados** (BigQuery, projeto de cobrança `monog
 - **Por quê:** manter a especificação comparável à de Sakurai. Com efeito fixo de município, essa "variação" é artificial, e por isso os coeficientes não são lidos.
 - **Alternativa considerada:** tirar as três variáveis: teste **R15**.
 - **Efeito no resultado (R15):**
-  - Modelo A, ano eleitoral na Despesa total: 277,669\*\*\* contra 277,865\*\*\*.
-  - Modelo B, coalizão do governador: 31,000\*\*\* contra 31,560\*\*\*.
-  - A coalizão presidencial em Transporte passa de −12,466\*\*\* para −15,707\*\*\*.
-- **Onde está no código:** [main_code.py:554](../codigo/main_code.py#L554) (interpolação) e [05_robustez.R:205](../regressao/05_robustez.R#L205) (R15).
+  - Modelo A, ano eleitoral na Despesa total: 0,0516\*\*\* contra 0,0519\*\*\*.
+  - Modelo B, coalizão do governador: 0,0038\*\*\* contra 0,0037\*\*\*.
+  - A coalizão presidencial em Transporte passa de 0,0418\*\*\* para 0,0427\*\*\*.
+  - A única mudança de significância nos coeficientes de interesse é o pré-eleitoral em Habitação e Urbanismo (de \*\* para \*).
+- **Onde está no código:** [main_code.py:554](../codigo/main_code.py#L554) (interpolação) e [05_robustez.R:215](../regressao/05_robustez.R#L215) (R15).
 
 ---
 
@@ -311,10 +312,10 @@ A base salva não apaga nada: só cria colunas de marcação. Quem retira os mun
   - 35 negativos, sendo 31 deles em TO 2024, 1 em TO 2021 e 3 em GO 2024.
 
   A original fica guardada em `receita_tributaria_real_pc_bruta`.
-- **Por quê:** em TO 2024, a mediana cai de 493 (2023) para 353 e volta a 501 (2025), com 31 municípios negativos. É um erro de lançamento do estado no ano. Receita tributária negativa não faz sentido econômico.
-- **Alternativa considerada:** usar a receita original: teste **R10**.
+- **Por quê:** em TO 2024, a mediana cai de 493 (2023) para 353 e volta a 501 (2025), com 31 municípios negativos, o que sugere possíveis erros de lançamento concentrados no estado e no ano. Receita tributária negativa não faz sentido econômico. Como a receita é controle em todas as regressões, esses município-anos saem dos modelos principais; os municípios do Tocantins continuam nos outros anos.
+- **Alternativa considerada:** usar a receita original: teste **R10**, com ln(1 + receita original). Os 35 negativos não têm logaritmo e ficam ausentes também no R10.
 - **Efeito no resultado:** ver 5.2 (o R10 desfaz as duas limpezas juntas).
-- **Onde está no código:** [01_base_regressao.R:128-134](../regressao/01_base_regressao.R#L128-L134).
+- **Onde está no código:** [01_base_regressao.R:130-135](../regressao/01_base_regressao.R#L130-L135).
 
 ### 5.2 Outliers de despesa: 0,2× e 5× a mediana do município
 
@@ -326,11 +327,12 @@ A base salva não apaga nada: só cria colunas de marcação. Quem retira os mun
   - Não limpar: teste **R10**.
   - Winsorizar (limitar aos percentis 1 e 99 de cada ano): teste **R11**.
 - **Efeito no resultado:**
-  - **R10:** ano eleitoral na Despesa total = 284,240\*\*\* (principal 277,865\*\*\*).
-  - **R11:** 292,138\*\*\*.
+  - **R10:** ano eleitoral na Despesa total = 0,0499\*\*\* (principal 0,0519\*\*\*).
+  - **R11:** 0,0529\*\*\*.
   - O padrão de significância do ano eleitoral e do pré-eleitoral se mantém nos dois.
+  - No R10, nenhum coeficiente de interesse muda de sinal; no modelo B, a coalizão do governador passa de \*\* para \* em Educação e Cultura e de \*\*\* para \*\* em Administração.
   - Como 12 dos outliers caem em 2016, o **R10 é o teste principal dessa decisão**.
-- **Onde está no código:** [01_base_regressao.R:139-146](../regressao/01_base_regressao.R#L139-L146) e [00_configuracao.R:224](../regressao/00_configuracao.R#L224) (`carrega_base`).
+- **Onde está no código:** [01_base_regressao.R:142-147](../regressao/01_base_regressao.R#L142-L147) e [00_configuracao.R:263](../regressao/00_configuracao.R#L263) (`carrega_base`).
 
 ---
 
@@ -344,10 +346,10 @@ A base salva não apaga nada: só cria colunas de marcação. Quem retira os mun
 - **Por quê:** cada pergunta passou a ter o modelo adequado. O ano eleitoral não pode ficar num modelo com efeito de ano (seria colinear: todos votam no mesmo ano). As coalizões precisam do efeito de ano.
 - **Alternativa considerada:** manter o modelo único. Ele continua no trabalho como teste **R5**, que reproduz a especificação anterior com os dados atuais.
 - **Efeito no resultado:** os números do R12 e do R13 antigos não foram guardados. O efeito aparece comparando o R5 com o modelo B:
-  - Coalizão presidencial, Despesa total: **65,039\*\*\*** no R5 e **−9,744 (n.s.)** no modelo B.
-  - Coalizão presidencial, Educação: **56,711\*\*\*** no R5 e **−1,253 (n.s.)** no modelo B.
-  - No próprio modelo A, sem efeito de ano, ela também sai positiva (Despesa total 67,005\*\*\*).
-- **Onde está no código:** [04_regressoes.R](../regressao/04_regressoes.R); R5 em [05_robustez.R:118](../regressao/05_robustez.R#L118).
+  - Coalizão presidencial, Despesa total: **0,0084\*\*\*** no R5 e **−0,0010 (n.s.)** no modelo B.
+  - Coalizão presidencial, Educação: **0,0309\*\*\*** no R5 e **−0,0025 (n.s.)** no modelo B.
+  - No próprio modelo A, sem efeito de ano, ela também sai positiva (Despesa total 0,0092\*).
+- **Onde está no código:** [04_regressoes.R](../regressao/04_regressoes.R); R5 em [05_robustez.R:126](../regressao/05_robustez.R#L126).
 
 ### 6.2 Modelo A ("ciclo eleitoral")
 
@@ -355,7 +357,7 @@ A base salva não apaga nada: só cria colunas de marcação. Quem retira os mun
 - **Por quê:** o ano eleitoral só varia no tempo. Ele precisa de tendências e do PIB nacional para separar o ciclo eleitoral da trajetória geral, e de um erro robusto a choques comuns no ano e a autocorrelação.
 - **Alternativa considerada:** erro agrupado por município (teste **R12** atual).
 - **Efeito no resultado:** ver a seção 8. **Leitura: ano eleitoral e pré-eleitoral vêm do modelo A.**
-- **Onde está no código:** [04_regressoes.R:32](../regressao/04_regressoes.R#L32); erro-padrão em [00_configuracao.R:131](../regressao/00_configuracao.R#L131).
+- **Onde está no código:** [04_regressoes.R:34](../regressao/04_regressoes.R#L34); erro-padrão em [00_configuracao.R:151](../regressao/00_configuracao.R#L151).
 
 ### 6.3 Modelo B ("coalizões")
 
@@ -363,7 +365,7 @@ A base salva não apaga nada: só cria colunas de marcação. Quem retira os mun
 - **Por quê:** o efeito de ano absorve tudo o que é comum aos municípios no ano (ciclo eleitoral, PIB nacional, presidente da época). A coalizão passa a ser comparada **dentro do mesmo ano**.
 - **Alternativa considerada:** erro de Driscoll-Kraay (teste **R13** atual).
 - **Efeito no resultado:** ver a seção 8. **Leitura: as coalizões vêm do modelo B.**
-- **Onde está no código:** [04_regressoes.R:48](../regressao/04_regressoes.R#L48); erro-padrão em [00_configuracao.R:127](../regressao/00_configuracao.R#L127).
+- **Onde está no código:** [04_regressoes.R:50](../regressao/04_regressoes.R#L50); erro-padrão em [00_configuracao.R:147](../regressao/00_configuracao.R#L147).
 
 ### 6.4 Efeitos fixos × aleatórios (Hausman)
 
@@ -376,47 +378,62 @@ A base salva não apaga nada: só cria colunas de marcação. Quem retira os mun
 
 | Dependente | Hausman (χ²) | p-valor | Robusto | p-valor (robusto) |
 |---|---|---|---|---|
-| Despesa total | 3.573,83 | 0 | 267,50 | 3,34e-53 |
-| Saúde e Saneamento | 2.258,51 | 0 | 387,08 | 1,09e-78 |
-| Educação e Cultura | 3.911,60 | 0 | 1.113,39 | 4,92e-235 |
-| Habitação e Urbanismo | 179,95 | 6,63e-31 | 42,92 | 9,10e-07 |
-| Assistência Social | 2.632,55 | 0 | 142,51 | 7,12e-27 |
-| Transporte | 944,72 | 1,12e-192 | 273,29 | 1,97e-54 |
-| Administração | 1.627,32 | 0 | 121,72 | 1,46e-22 |
-| Agricultura | 857,00 | 6,99e-174 | 264,36 | 1,55e-52 |
-| Comunicações | 154,56 | 8,77e-26 | 35,63 | 2,05e-05 |
+| Despesa total | 29.697,93 | 0 | 374,28 | 5,90e-76 |
+| Saúde e Saneamento | 4.697,14 | 0 | 484,11 | 1,80e-99 |
+| Educação e Cultura | 3.198,99 | 0 | 686,00 | 7,38e-143 |
+| Habitação e Urbanismo | 296,93 | 5,17e-55 | 109,32 | 5,25e-20 |
+| Assistência Social | 1.463,20 | 4,00e-304 | 355,68 | 5,55e-72 |
+| Transporte | 670,22 | 5,82e-134 | 410,03 | 1,34e-83 |
+| Administração | 2.618,88 | 0 | 671,99 | 7,66e-140 |
+| Agricultura | 130,36 | 5,76e-21 | 229,48 | 3,81e-45 |
+| Comunicações | 542,95 | 7,16e-107 | 178,34 | 2,30e-34 |
 
   "p-valor 0" significa abaixo da precisão numérica do R.
 
-  Na despesa total, os três estimadores dão um ano eleitoral parecido: pooled 251,583\*\*, efeitos fixos 277,865\*\*\* e efeitos aleatórios 257,627\*\*. Os controles municipais mudam bastante; por exemplo, população (log) vai de −68,438\*\* no pooled a −1562,263\*\*\* nos efeitos fixos.
-- **Onde está no código:** [03_hausman.R:23-25](../regressao/03_hausman.R#L23-L25), [00_configuracao.R:200](../regressao/00_configuracao.R#L200) (`hausman_mundlak`) e [04_regressoes.R:66](../regressao/04_regressoes.R#L66) (comparação).
+  Na despesa total, o ano eleitoral é positivo nos três estimadores: pooled 0,0381\*\*\*, efeitos fixos 0,0519\*\*\* e efeitos aleatórios 0,0449\*\*\*. Os controles municipais mudam bastante; por exemplo, população (log) vai de −0,0147\* no pooled a −0,5413\*\*\* nos efeitos fixos.
+- **Onde está no código:** [03_hausman.R:23-25](../regressao/03_hausman.R#L23-L25), [00_configuracao.R:222](../regressao/00_configuracao.R#L222) (`hausman_mundlak`) e [04_regressoes.R:67](../regressao/04_regressoes.R#L67) (comparação).
 
 ### 6.5 Os dois erros-padrão
 
 - **O que foi feito:**
   - **Driscoll-Kraay:** robusto a correlação entre municípios no mesmo ano e a autocorrelação.
   - **Agrupado por município** (Arellano, HC1): robusto a heterocedasticidade e a correlação dentro de cada município ao longo do tempo.
-- **Por quê:** cada modelo usa o erro mais adequado à variável de interesse, e o outro serve de teste (R12 e R13). O Driscoll-Kraay depende de muitos períodos, e aqui há só 13 anos. Por isso o critério de resultado sólido exige os dois.
+- **Por quê:** cada modelo usa o erro mais adequado à variável de interesse, e o outro serve de teste (R12 e R13). O Driscoll-Kraay depende de muitos períodos, e aqui há só 13 anos. Por isso o critério de resultado sólido exige os dois (ver a seção 8).
 - **Alternativa considerada:** usar um erro só para tudo.
 - **Efeito no resultado:** ver a seção 8.
-- **Onde está no código:** [00_configuracao.R:127-131](../regressao/00_configuracao.R#L127-L131).
+- **Onde está no código:** [00_configuracao.R:147-151](../regressao/00_configuracao.R#L147-L151).
 
-### 6.6 Resultados principais
+### 6.6 Especificação em log (decisão do orientador)
+
+- **O que foi feito:** a dependente e as receitas entram em ln(1 + valor per capita); o PIB nacional, em ln. O zero vira ln(1) = 0 e fica na regressão; negativo vira NA.
+- **Por quê:**
+  - os municípios têm tamanhos muito diferentes (despesa total de R$ 643 a R$ 63.396 per capita, Tabela 4);
+  - o interesse é a recomposição entre áreas de tamanhos diferentes, e a variação percentual torna os grupos comparáveis;
+  - a distribuição é assimétrica (despesa total: média de R$ 5.446 e mediana de R$ 4.705).
+  - ln(1 + x) em vez de ln(x): mantém os zeros. Para valores acima de R$ 10, a diferença entre os dois é menor que 0,1 (no máximo 0,0953).
+- **Alternativa considerada:** nível, a antiga especificação principal, agora no teste **R3** e comparação direta com Sakurai (2009).
+- **Efeito no resultado:** na amostra, saem só os negativos que estavam nos modelos (Assistência 1, Transporte 1); os 5 de Administração são de TO 2024 e já estavam fora. Os 4 zeros continuam. Na Tabela 4 do TCC, os 7 negativos também ficam ausentes e os zeros ficam, para a tabela seguir a mesma regra dos modelos; a base e as colunas `<var>_pc` não mudam. Ver as seções 7 e 8.
+- **Cuidado de leitura:** valores positivos até R$ 10: Comunicações 74,42% (24,95% abaixo de R$ 1), Transporte 13,28%, Agricultura 12,78%. Em Comunicações, o coeficiente não se lê como variação percentual, e o resultado não é interpretado; o mesmo vale, em parte, para Transporte e Agricultura.
+- **Onde está no código:** [00_configuracao.R:131](../regressao/00_configuracao.R#L131) (`ln1p`), [01_base_regressao.R:167](../regressao/01_base_regressao.R#L167) (colunas `ln1p_*`).
+
+### 6.7 Resultados principais
 
 **Modelo A** (Driscoll-Kraay):
 
 | | Desp. total | Saúde e San. | Educ. e Cult. | Hab. e Urb. | Assistência | Transporte | Administração | Agricultura | Comunicações |
 |---|---|---|---|---|---|---|---|---|---|
-| Ano eleitoral | 277,865\*\*\* | 53,163\*\*\* | 49,079\* | 126,814\*\*\* | 14,078\*\*\* | 41,741\*\*\* | 6,817 | 0,486 | −0,801\*\*\* |
-| Ano pré-eleitoral | 162,806\* | 1,221 | 78,512\*\* | 34,083\*\* | 9,468\*\* | 8,342 | 10,347 | 5,168 | 0,656\*\*\* |
-| Pandemia (2020) | −76,603 | 106,862\*\*\* | −242,843\*\*\* | 31,846\* | −0,062 | −0,516 | 22,273\*\*\* | 2,517 | 1,594\*\*\* |
+| Ano eleitoral | 0,0519\*\*\* | 0,0411\*\*\* | 0,0343\*\* | 0,2389\*\*\* | 0,0678\*\*\* | 0,1778\*\*\* | 0,0097 | 0,0529\*\*\* | 0,0318\*\*\* |
+| Ano pré-eleitoral | 0,0209 | −0,0083 | 0,0461\*\* | 0,0509\*\* | 0,0355\* | 0,0188 | 0,0077 | 0,0564\*\* | 0,0605\*\*\* |
+| Pandemia (2020) | −0,0058 | 0,0908\*\*\* | −0,1610\*\*\* | 0,1254\*\*\* | 0,0169\* | 0,0711\*\*\* | 0,0297\*\*\* | 0,0312\*\* | 0,0444\*\*\* |
+
+Elasticidades na despesa total: receita tributária 0,0837\*\*\* (A) e 0,0776\*\*\* (B); transferências correntes 0,3203\*\*\* (A) e 0,3164\*\*\* (B); PIB nacional 0,6812 (n.s., A).
 
 **Modelo B** (agrupado por município):
 
 | | Desp. total | Saúde e San. | Educ. e Cult. | Hab. e Urb. | Assistência | Transporte | Administração | Agricultura | Comunicações |
 |---|---|---|---|---|---|---|---|---|---|
-| Coalizão governador | 31,560\*\*\* | 4,704\*\* | −1,165 | 4,267 | 0,698 | 2,406 | 7,167\*\*\* | −0,560 | −0,119 |
-| Coalizão presidente | −9,744 | 8,453\*\*\* | −1,253 | 0,219 | 1,003 | −12,466\*\*\* | 0,309 | −4,580\*\*\* | 0,398 |
+| Coalizão governador | 0,0037\*\*\* | 0,0009 | 0,0033\*\* | 0,0160\*\* | 0,0009 | 0,0114 | 0,0070\*\*\* | 0,0110 | −0,0022 |
+| Coalizão presidente | −0,0010 | 0,0001 | −0,0025 | −0,0163\* | −0,0058 | 0,0418\*\*\* | 0,0043 | 0,0045 | 0,0075 |
 
 Observações (modelos A e B): de 70.669 (Despesa total) a 12.360 (Comunicações).
 
@@ -424,94 +441,100 @@ Observações (modelos A e B): de 70.669 (Despesa total) a 12.360 (Comunicaçõe
 
 ## 7. Testes de robustez
 
-Cada teste muda **uma coisa** em relação ao modelo principal. As exceções estão marcadas com ⚠ e são explicadas depois da tabela. "Igual ao principal" quer dizer o mesmo padrão de significância nas 9 dependentes.
+Cada teste muda **uma coisa** em relação ao modelo principal, em log. As exceções estão marcadas com ⚠ e são explicadas depois da tabela. "Igual ao principal" quer dizer o mesmo padrão de significância nas 9 dependentes.
 
 | Teste | O que muda | Ano eleitoral (A) | Pré-eleitoral (A) | Coalizões (B) |
 |---|---|---|---|---|
-| R1 | Coalizões sem fusões (só renomeações) | Igual ao principal (Desp. total 277,672\*\*\*) | Igual (162,635\*) | Governador: Desp. total 28,511\*\*\*; Saúde perde significância (3,295); Administração 6,405\*\*. Presidente: igual |
-| R2 | Sem prefeito/governador de suplementar | Igual (279,523\*\*\*) | Igual (165,013\*) | Governador: Saúde passa a 4,376\*, Adm. a 6,811\*\*. Presidente: igual |
-| R3 | Dependente em log (coef. ≈ variação proporcional) | Desp. total 0,054\*\*\*; Agricultura passa a 0,061\*\*\*; Comunicações muda de sinal (0,071\*\*\*) | Desp. total 0,023 (n.s.); Agricultura 0,066\*\*\* | Governador: Desp. total 0,003\*\*\*, Educ. 0,003\*, Hab. 0,016\*\*, Adm. 0,006\*\*. Presidente: Transporte muda de sinal (0,054\*\*\*); Adm. 0,007\*; Saúde e Agricultura n.s. |
-| R4 | Participação na despesa total (%) | Educ. −0,487\*\*\*, Hab. 1,437\*\*\*, Transp. 0,429\*\*\*, Adm. −0,457\*\*\*, Saúde n.s. | Saúde −0,757\*\*\*, Educ. 0,737\*\*\*, Hab. 0,210\*\* | Governador: Saúde −0,097\*\*\*, Educ. −0,114\*\*\*. Presidente: nenhum significativo |
-| R5 ⚠ | Especificação de Sakurai: sem pré-eleitoral e sem pandemia, erro agrupado (só A) | Desp. total 202,329\*\*\*; Educ. −40,640\*\*\*; Adm. 9,046\*\*\*; Comunicações n.s. | (não entra) | (no modelo A) Presidente: Desp. total 65,039\*\*\*, Educ. 56,711\*\*\* |
-| R6 | + segundo mandato | Igual (277,917\*\*\*) | Igual (163,833\*) | Igual (governador 30,768\*\*\*; presidente −10,078). Segundo mandato: Desp. total 52,470\* (A) e 64,446\*\*\* (B) |
-| R7 ⚠ | PIB municipal per capita, 2013-2023 | Desp. total 129,219\*; Saúde 2,522 (n.s.); Educ. 74,811\*\* | Desp. total 110,111 (n.s.) | Governador 24,960\*\*\*; presidente −17,346\*\* (Desp. total), Educ. −10,449\*\*\* |
-| R7a | Especificação principal, só 2013-2023 | Desp. total 66,596 (n.s.); Saúde 33,845\*\*; Hab. 47,315\*\*; Transp. 19,555\* | Desp. total 92,778 (n.s.); Educ. 57,904\* | Governador 25,777\*\*\*; presidente −16,755\*\* (Desp. total), Educ. −10,278\*\*\* |
-| R8 | Assistência + Previdência (só essa dependente) | 10,004 (n.s.) | 10,708 (n.s.) | Governador 5,023\*\*\*; presidente −2,323 (n.s.) |
-| R9 | Transporte, Agricultura e Comunicações só com quem informa sempre | Transp. 48,686\*\*\*; Agric. 0,077; Com. −0,300\* | Com. 1,145\*\*\* | Presidente: Transp. −17,037\*\*\*, Agric. −5,234\*\*\*; governador n.s. |
-| R10 ⚠ | Sem limpeza (outliers + receita original) | Igual (284,240\*\*\*) | Igual (165,024\*) | Governador: Saúde perde significância (3,784), Hab. passa a 4,797\*. Presidente: igual |
-| R11 ⚠ | Winsorização p1-p99 no lugar da limpeza | Igual (292,138\*\*\*) | Igual (155,066\*), exceto Assistência 9,110\* | Governador: Hab. passa a 6,484\*\*\*. Presidente: Com. passa a 0,532\* |
-| R12 | Modelo A com erro agrupado (só A) | Educ. 49,079\*\*\*; Adm. 6,817\*; Com. −0,801 (n.s.) | Todos \*\*\*, exceto Saúde (n.s.) | (não entra) |
-| R13 | Modelo B com Driscoll-Kraay (só B) | (não entra) | (não entra) | Governador: Saúde perde significância (4,704); Adm. 7,167\*\*. Presidente: Saúde 8,453\*\*; resto igual |
-| R14 | Modelo A sem pandemia (só A) | Desp. total 259,057\*\*; Saúde 79,403\*\*\*; Educ. −10,566 (n.s.); Com. −0,407 (n.s.) | Desp. total 165,778\*; Educ. 87,930\*\*; Hab. 32,847\* | (não entra) |
-| R15 | Sem as variáveis do Censo | Igual (277,669\*\*\*) | Igual (161,903\*) | Governador: Saúde 4,393\*. Presidente: Transp. −15,707\*\*\*, Agric. −5,766\*\*\* |
-| R16 | Ano eleitoral e pré-eleitoral separados por eleição (só A) | 2016: Desp. total 30,935 (n.s.). 2024: 467,553\*\*\* | 2015: 52,068 (n.s.); 2019: −9,598 (n.s.); 2023: 392,115\*\*\* | (não entra) |
+| R1 | Coalizões sem fusões (só renomeações) | Igual ao principal (Desp. total 0,0519\*\*\*) | Igual (0,0209) | Governador: Desp. total 0,0034\*\*\*; Adm. 0,0061\*\*. Presidente: igual |
+| R2 | Sem prefeito/governador de suplementar | Igual (0,0519\*\*\*) | Igual (0,0211) | Governador: Educ. 0,0029\*, Adm. 0,0067\*\*. Presidente: igual |
+| R3 | Especificação em nível (R$; dependente, receitas e PIB) | Desp. total 277,865\*\*\*; Educ. 49,079\*; Agricultura 0,486 (n.s.); Comunicações muda de sinal (−0,801\*\*\*) | Desp. total 162,806\*; Agricultura 5,168 (n.s.) | Governador: Desp. total 31,560\*\*\*, Saúde 4,704\*\*, Adm. 7,167\*\*\*, Hab. e Educ. n.s. Presidente: Transporte muda de sinal (−12,466\*\*\*); Saúde 8,453\*\*\*; Agricultura −4,580\*\*\* |
+| R4 | Participação na despesa total (%), controles em log | Educ. −0,545\*\*\*, Hab. 1,463\*\*\*, Transp. 0,437\*\*\*, Adm. −0,448\*\*\*, Assist. 0,064\*\*\*, Saúde n.s. | Saúde −0,750\*\*\*, Educ. 0,736\*\*\*, Hab. 0,196\*, Adm. −0,205\*\* | Governador: Saúde −0,098\*\*\*, Educ. −0,115\*\*\*. Presidente: nenhum significativo |
+| R5 ⚠ | Especificação de Sakurai, em log: sem pré-eleitoral e sem pandemia, erro agrupado (só A) | Desp. total 0,0432\*\*\*; Educ. −0,0257\*\*\*; Adm. 0,0152\*\*\*; Comunicações n.s. | (não entra) | (no modelo A) Presidente: Desp. total 0,0084\*\*\*, Educ. 0,0309\*\*\* |
+| R6 | + segundo mandato | Igual (0,0520\*\*\*) | Igual (0,0211) | Governador 0,0035\*\*\*, Educ. 0,0033\*; presidente −0,0011 (n.s.). Segundo mandato: Desp. total 0,0126\*\*\* (A) e 0,0141\*\*\* (B) |
+| R7 ⚠ | Log do PIB municipal per capita, 2013-2023 | Desp. total 0,0267\*\*\*; Saúde 0,0027 (n.s.); Educ. 0,0466\*\*; Assist. e Agric. n.s.; Adm. −0,0136\*\* | Desp. total 0,0083 (n.s.); Saúde −0,0214\*\*\* | Governador 0,0030\*\*\*; presidente −0,0035\*\* (Desp. total), Educ. −0,0070\*\*\* |
+| R7a | Especificação principal, só 2013-2023 | Desp. total 0,0306 (n.s.); Saúde 0,0446\*\*\*; Hab. 0,1924\*\*\*; Transp. 0,1591\*\*\*; Educ., Assist. e Agric. n.s. | Desp. total 0,0087 (n.s.); Saúde −0,0112\*\* | Governador 0,0033\*\*\*; presidente −0,0034\*\* (Desp. total), Educ. −0,0069\*\*\* |
+| R8 | ln(1 + Assistência + Previdência) (só essa dependente) | 0,0377\*\*\* | 0,0260 (n.s.) | Governador 0,0103\*\*\*; presidente −0,0144\*\*\* |
+| R9 | Transporte, Agricultura e Comunicações só com quem informa sempre | Transp. 0,1525\*\*\*; Agric. 0,0484\*\*\*; Com. 0,0195 (n.s.) | Agric. 0,0564\*\*; Com. 0,0894\*\*\* | Governador: Transp. 0,0238\*\*, Agric. 0,0122\*. Presidente: Transp. 0,0295\*\* |
+| R10 ⚠ | Sem limpeza (outliers + ln(1 + receita original)) | Igual (0,0499\*\*\*) | Igual (0,0215) | Governador: Educ. 0,0031\*, Adm. 0,0069\*\*. Presidente: igual |
+| R11 ⚠ | Winsorização p1-p99 em reais, antes do log | Igual (0,0529\*\*\*) | Igual (0,0211) | Governador: Hab. 0,0158\*\*\*. Presidente: Hab. −0,0162\*\* |
+| R12 | Modelo A com erro agrupado (só A) | Todos significativos: Adm. 0,0097\*\*\*; Educ. 0,0343\*\*\*; Com. 0,0318\*\* | Todos \*\*\* | (não entra) |
+| R13 | Modelo B com Driscoll-Kraay (só B) | (não entra) | (não entra) | Governador: Educ. n.s.; Hab. 0,0160\*\*\*; Agric. 0,0110\*. Presidente: Hab. −0,0163\*\*\*; Assist. −0,0058\* |
+| R14 | Modelo A sem pandemia (só A) | Desp. total 0,0504\*\*\*; Saúde 0,0649\*\*\*; Educ. −0,0078 (n.s.); Adm. 0,0174\*\* | Desp. total 0,0211 (n.s.); Educ. 0,0523\*\*; Hab. 0,0461\* | (não entra) |
+| R15 | Sem as variáveis do Censo | Igual (0,0516\*\*\*) | Igual, exceto Hab. 0,0473\* | Governador 0,0038\*\*\*. Presidente: Transp. 0,0427\*\*\* |
+| R16 | Ano eleitoral e pré-eleitoral separados por eleição (só A) | 2016: Desp. total 0,0329\*\*. 2024: 0,0650\*\*\* | 2015: 0,0083 (n.s.); 2019: −0,0025 (n.s.); 2023: 0,0511\*\* | (não entra) |
 
 **Testes que mudam mais de uma coisa (de propósito):**
-- **R5:** especificação (sem pré-eleitoral e sem pandemia) + erro agrupado. É a especificação de Sakurai.
-- **R7:** amostra 2013-2023 (forçada, porque o PIB municipal só vai até 2023) + troca do PIB. O **R7a** separa as duas coisas. Sem 2024, o efeito do ano eleitoral fica menor: despesa total 67 (n.s.), Saúde 34\*\*, Habitação 47\*\*, Transporte 20\*. Com a dummy de pandemia, o R7a identifica o ano eleitoral só pela eleição de 2016.
-- **R10:** volta com os outliers + usa a receita tributária original.
-- **R11:** troca a limpeza (excluir outliers) pela winsorização.
+- **R5:** especificação (sem pré-eleitoral e sem pandemia) + erro agrupado. É a especificação de Sakurai, em log.
+- **R7:** amostra 2013-2023 (forçada, porque o PIB municipal só vai até 2023) + troca do PIB. O **R7a** separa as duas coisas. Com a dummy de pandemia, o R7a identifica o ano eleitoral só pela eleição de 2016.
+- **R10:** volta com os outliers + usa ln(1 + receita tributária original). Os 35 negativos dessa receita (31 de TO 2024, 1 de TO 2021 e 3 de GO 2024) ficam ausentes, de 7 a 35 por variável.
+- **R11:** troca a limpeza (excluir outliers) pela winsorização em reais, antes do log. Nenhum negativo ou zero sobra depois da winsorização.
 
 **Outros cuidados de leitura:**
-- **R3:** perde alguns município-anos a mais, os de valor zero ou negativo (no log, viram vazio).
+- **R3:** é a antiga especificação principal, e mantém os negativos. Os coeficientes estão em R$.
 - **R9:** os municípios foram selecionados na base limpa.
 - **R16:** rodado só com Driscoll-Kraay.
+- Os números em nível de R7, R7a e R16 estão no backup, não nas tabelas atuais. Coalizão presidencial, Despesa total, em nível: −17,346\*\* (R7) e −16,755\*\* (R7a).
 
 ---
 
 ## 8. Resultados sólidos × frágeis
 
-**Critério do trabalho:** um resultado é **sólido** quando é significativo (pelo menos a 10%) **com os dois erros-padrão**.
-- Modelo A: Driscoll-Kraay (principal) e agrupado (R12).
-- Modelo B: agrupado (principal) e Driscoll-Kraay (R13).
-
-É **frágil** quando é significativo com só um deles.
+**Critério do trabalho:** um resultado é **sólido** quando atende a três condições:
+- é significativo (pelo menos a 10%) **com os dois erros-padrão** (modelo A: Driscoll-Kraay e agrupado, R12; modelo B: agrupado e Driscoll-Kraay, R13);
+- **não depende de uma só eleição** (R16, só no modelo A);
+- **vale nas duas formas funcionais**, log e nível (R3).
 
 ### 8.1 Ano eleitoral (modelo A)
 
-| Dependente | Driscoll-Kraay | Agrupado (R12) | Classificação |
-|---|---|---|---|
-| Despesa total | 277,865\*\*\* | \*\*\* | **Sólido** |
-| Saúde e Saneamento | 53,163\*\*\* | \*\*\* | **Sólido** |
-| Educação e Cultura | 49,079\* | \*\*\* | **Sólido** (só a 10% com Driscoll-Kraay) |
-| Habitação e Urbanismo | 126,814\*\*\* | \*\*\* | **Sólido** |
-| Assistência Social | 14,078\*\*\* | \*\*\* | **Sólido** |
-| Transporte | 41,741\*\*\* | \*\*\* | **Sólido** |
-| Administração | 6,817 | \* | Frágil |
-| Agricultura | 0,486 | n.s. | Não significativo |
-| Comunicações | −0,801\*\*\* | n.s. | Frágil |
+| Dependente | Driscoll-Kraay | Agrupado (R12) | 2016 | 2024 | Nível (R3) | Classificação |
+|---|---|---|---|---|---|---|
+| Despesa total | 0,0519\*\*\* | \*\*\* | \*\* | \*\*\* | \*\*\* | **Sólido**, com a ressalva de que o R7a dá n.s. |
+| Saúde e Saneamento | 0,0411\*\*\* | \*\*\* | \*\*\* | \*\*\* | \*\*\* | **Sólido** (n.s. no R7) |
+| Educação e Cultura | 0,0343\*\* | \*\*\* | n.s. | \*\* | \* | Depende de 2024 e do tratamento de 2020 |
+| Habitação e Urbanismo | 0,2389\*\*\* | \*\*\* | \*\*\* | \*\*\* | \*\*\* | **Sólido** |
+| Assistência Social | 0,0678\*\*\* | \*\*\* | n.s. | \*\*\* | \*\*\* | Depende de 2024 |
+| Transporte | 0,1778\*\*\* | \*\*\* | \*\*\* | \*\*\* | \*\*\* | **Sólido** (cerca de 13% dos valores até R$ 10) |
+| Administração | 0,0097 | \*\*\* | n.s. | \*\* | n.s. | Frágil |
+| Agricultura | 0,0529\*\*\* | \*\*\* | \*\* | n.s. | n.s. | Depende da forma funcional |
+| Comunicações | 0,0318\*\*\* | \*\* | \*\*\* | n.s. | −0,801\*\*\* | Não interpretada |
 
 ### 8.2 Ano pré-eleitoral (modelo A)
 
-| Dependente | Driscoll-Kraay | Agrupado (R12) | Classificação |
-|---|---|---|---|
-| Despesa total | 162,806\* | \*\*\* | **Sólido** (só a 10% com Driscoll-Kraay) |
-| Saúde e Saneamento | 1,221 | n.s. | Não significativo |
-| Educação e Cultura | 78,512\*\* | \*\*\* | **Sólido** |
-| Habitação e Urbanismo | 34,083\*\* | \*\*\* | **Sólido** |
-| Assistência Social | 9,468\*\* | \*\*\* | **Sólido** |
-| Transporte | 8,342 | \*\*\* | Frágil |
-| Administração | 10,347 | \*\*\* | Frágil |
-| Agricultura | 5,168 | \*\*\* | Frágil |
-| Comunicações | 0,656\*\*\* | \*\*\* | **Sólido** |
+| Dependente | Driscoll-Kraay | Agrupado (R12) | 2015 | 2019 | 2023 | Nível (R3) | Classificação |
+|---|---|---|---|---|---|---|---|
+| Despesa total | 0,0209 | \*\*\* | n.s. | n.s. | \*\* | \* | Frágil |
+| Saúde e Saneamento | −0,0083 | \*\*\* | \*\*\* | \*\*\* | n.s. | n.s. | Frágil |
+| Educação e Cultura | 0,0461\*\* | \*\*\* | \*\* | n.s. | \*\* | \*\* | Significativo nas formas e erros; varia por ano |
+| Habitação e Urbanismo | 0,0509\*\* | \*\*\* | \*\*\* | n.s. | \*\* | \*\* | Significativo nas formas e erros; varia por ano |
+| Assistência Social | 0,0355\* | \*\*\* | \* | n.s. | \*\* | \*\* | Significativo nas formas e erros; varia por ano |
+| Transporte | 0,0188 | \*\*\* | n.s. | n.s. | n.s. | n.s. | Frágil |
+| Administração | 0,0077 | \*\*\* | \*\* | n.s. | \* | n.s. | Frágil |
+| Agricultura | 0,0564\*\* | \*\*\* | \*\*\* | n.s. | n.s. | n.s. | Depende da forma funcional |
+| Comunicações | 0,0605\*\*\* | \*\*\* | \*\*\* | \*\*\* | \*\*\* | \*\*\* | Não interpretada |
 
 ### 8.3 Coalizão do governador (modelo B)
 
-| Dependente | Agrupado | Driscoll-Kraay (R13) | Classificação |
-|---|---|---|---|
-| Despesa total | 31,560\*\*\* | \*\*\* | **Sólido** |
-| Saúde e Saneamento | 4,704\*\* | n.s. | Frágil |
-| Administração | 7,167\*\*\* | \*\* | **Sólido** |
-| Demais (Educ., Hab., Assist., Transp., Agric., Com.) | n.s. | n.s. | Não significativo |
+| Dependente | Agrupado | Driscoll-Kraay (R13) | Nível (R3) | Classificação |
+|---|---|---|---|---|
+| Despesa total | 0,0037\*\*\* | \*\*\* | 31,560\*\*\* | **Sólido** |
+| Administração | 0,0070\*\*\* | \*\*\* | 7,167\*\*\* | **Sólido** |
+| Habitação e Urbanismo | 0,0160\*\* | \*\*\* | 4,267 (n.s.) | Depende da forma funcional |
+| Educação e Cultura | 0,0033\*\* | n.s. | −1,165 (n.s.) | Frágil |
+| Saúde e Saneamento | 0,0009 | n.s. | 4,704\*\* | Depende da forma funcional |
+| Agricultura | 0,0110 | \* | −0,560 (n.s.) | Frágil |
+| Assist., Transp., Com. | n.s. | n.s. | n.s. | Não significativo |
 
 ### 8.4 Coalizão do presidente (modelo B)
 
-| Dependente | Agrupado | Driscoll-Kraay (R13) | Classificação |
-|---|---|---|---|
-| Saúde e Saneamento | 8,453\*\*\* | \*\* | **Sólido** |
-| Transporte | −12,466\*\*\* | \*\*\* | **Sólido** (negativo) |
-| Agricultura | −4,580\*\*\* | \*\*\* | **Sólido** (negativo) |
-| Demais (Desp. total, Educ., Hab., Assist., Adm., Com.) | n.s. | n.s. | Não significativo |
+| Dependente | Agrupado | Driscoll-Kraay (R13) | Nível (R3) | Classificação |
+|---|---|---|---|---|
+| Despesa total | −0,0010 | n.s. | −9,744 (n.s.) | Não significativo na amostra completa; negativo em 2013-2023 (R7 e R7a) |
+| Transporte | 0,0418\*\*\* | \*\*\* | −12,466\*\*\* | Sinal oposto entre as formas; não interpretado |
+| Habitação e Urbanismo | −0,0163\* | \*\*\* | 0,219 (n.s.) | Depende da forma funcional |
+| Saúde e Saneamento | 0,0001 | n.s. | 8,453\*\*\* | Depende da forma funcional |
+| Agricultura | 0,0045 | n.s. | −4,580\*\*\* | Depende da forma funcional |
+| Assistência Social | −0,0058 | \* | 1,003 (n.s.) | Frágil |
+| Educ., Adm., Com. | n.s. | n.s. | n.s. | Não significativo |
 
 ### 8.5 O efeito por eleição (R16: 2016 × 2024)
 
@@ -519,93 +542,104 @@ O R16 troca o ano eleitoral por uma dummy para 2016 e outra para 2024. A de 2020
 
 | Dependente | Eleição 2016 | Eleição 2024 | Pré 2015 | Pré 2019 | Pré 2023 |
 |---|---|---|---|---|---|
-| Despesa total | 30,935 | 467,553\*\*\* | 52,068 | −9,598 | 392,115\*\*\* |
-| Saúde e Saneamento | 24,353\*\*\* | 74,464\*\*\* | −6,984 | −26,741\*\*\* | 29,470\*\*\* |
-| Educação e Cultura | −18,578 | 99,544\*\*\* | 41,546\* | 19,599 | 157,564\*\*\* |
-| Habitação e Urbanismo | 57,436\*\*\* | 180,025\*\*\* | 15,345\*\*\* | −11,842 | 83,331\*\*\* |
-| Assistência Social | 2,994 | 22,594\*\*\* | 3,640 | 2,172 | 20,259\*\*\* |
-| Transporte | 17,628\*\*\* | 60,162\*\*\* | 4,317 | −10,992\* | 25,594\*\*\* |
-| Administração | −17,401\*\* | 26,208\*\*\* | −5,873 | 2,091 | 31,265\*\*\* |
-| Agricultura | −2,341 | 2,210 | 3,429\* | −0,504 | 11,195\* |
-| Comunicações | −0,389\*\* | −1,210\*\*\* | 0,427\*\*\* | 0,835\*\*\* | 0,840\*\*\* |
+| Despesa total | 0,0329\*\* | 0,0650\*\*\* | 0,0083 | −0,0025 | 0,0511\*\* |
+| Saúde e Saneamento | 0,0414\*\*\* | 0,0396\*\*\* | −0,0106\*\*\* | −0,0196\*\*\* | 0,0033 |
+| Educação e Cultura | 0,0030 | 0,0564\*\* | 0,0243\*\* | 0,0137 | 0,0920\*\* |
+| Habitação e Urbanismo | 0,2153\*\*\* | 0,2526\*\*\* | 0,0422\*\*\* | −0,0030 | 0,1012\*\* |
+| Assistência Social | 0,0402 | 0,0873\*\*\* | 0,0221\* | 0,0063 | 0,0705\*\* |
+| Transporte | 0,1920\*\*\* | 0,1625\*\*\* | −0,0070 | −0,0093 | 0,0695 |
+| Administração | −0,0059 | 0,0217\*\* | −0,0066\*\* | 0,0024 | 0,0251\* |
+| Agricultura | 0,0632\*\* | 0,0418 | 0,0657\*\*\* | 0,0265 | 0,0720 |
+| Comunicações | 0,0393\*\*\* | 0,0250 | 0,0627\*\*\* | 0,0627\*\*\* | 0,0566\*\*\* |
 
 **O que a tabela mostra (descrição, sem interpretação):**
-- O coeficiente médio do ano eleitoral no modelo A (277,865\*\*\* na Despesa total) junta duas eleições muito diferentes. Em 2016, a despesa total não é significativa (30,935). Em 2024, é 467,553\*\*\*.
+- A despesa total é significativa nas duas eleições, com efeito maior em 2024 (cerca de 6,7%, contra 3,3% em 2016).
 - Saúde, Habitação e Transporte são significativos e positivos nas duas eleições.
-- O mesmo acontece no pré-eleitoral: 2023 é significativo em quase tudo; 2015 e 2019, em poucas variáveis.
-- Junto com o R7a (sem 2024, o efeito médio cai), isso indica que **2023-2024 pesam muito no resultado médio**. Cabe à autora discutir por quê.
-- O R16 foi rodado só com Driscoll-Kraay. O critério de solidez (os dois erros) não foi aplicado a ele.
+- No pré-eleitoral, a despesa total só é significativa em 2023.
+- O R7a (sem 2024) dá 0,0306 (n.s.) na despesa total, e o R7 (mesma amostra, PIB municipal), 0,0267\*\*\*. O R16 foi rodado só com Driscoll-Kraay.
+
+### 8.6 Síntese (a mesma do TCC, seção 5.4)
+
+1. Habitação e Urbanismo, Transporte e Saúde e Saneamento sobem no ano eleitoral nas duas eleições, nas duas formas e com os dois erros.
+2. O alinhamento com o governador aumenta a despesa total, com efeito pequeno (cerca de 0,4%).
+3. O alinhamento com o presidente não tem efeito sobre a despesa total na amostra completa; na amostra até 2023 o efeito é negativo, de modo que o resultado é sensível ao período.
+4. A despesa total sobe cerca de 5% no ano eleitoral, mais em 2024; em 2016 o efeito é menor e não resiste ao corte da amostra na especificação principal (R7a).
+5. Resultados que dependem da forma funcional: Agricultura no ano eleitoral, Transporte e Habitação nas coalizões; Comunicações não é interpretada.
 
 ---
 
 ## 9. Limitações
 
-1. **Poucas eleições para identificar o ciclo.** Com a dummy de pandemia, o ano eleitoral do modelo A vem só de 2016 e 2024 (no R7 e no R7a, só de 2016). O R16 mostra que as duas eleições dão resultados muito diferentes.
+1. **Poucas eleições para identificar o ciclo.** Com a dummy de pandemia, o ano eleitoral do modelo A vem só de 2016 e 2024 (no R7 e no R7a, só de 2016). O R16 mostra diferenças entre as duas eleições.
 2. **Driscoll-Kraay com T = 13.** Esse erro-padrão é pensado para muitos períodos. Por isso o critério de solidez exige também o erro agrupado.
 3. **Variáveis do Censo** só variam pela interpolação 2010-2022 e ficam constantes em 2023-2025. Os coeficientes não são interpretados (R15 sem elas). 45 município-anos não têm esses dados.
 4. **Ausência não é zero**, mas a cobertura é desigual. Comunicações tem em média 958 municípios por ano, e Transporte, 4.220. As amostras diferem entre dependentes.
-5. **Comunicações (função 24) é sobretudo infraestrutura** (telecomunicações, postais). O gasto com publicidade fica em Comunicação Social (3.04.131), dentro de Administração, e não foi usado.
-6. **Lei eleitoral (Lei 9.504/1997, art. 73):** proíbe publicidade institucional nos 3 meses antes da eleição. Com dado anual, uma alta no 1º semestre e o bloqueio no 2º podem se compensar. Conferir a redação vigente antes de citar.
-7. **Vinculações constitucionais:** mínimos de 15% (Saúde) e 25% (Educação) das receitas de impostos limitam a margem do prefeito.
-8. **Transferências correntes** (conta 1.1.7.0) incluem mais do que União + Estados (convênios, outras instituições), diferente de Sakurai. E a receita é bruta, sem descontar deduções (ex.: FUNDEB).
-9. **Ideologia do partido do prefeito** ficou fora do modelo (decisão da autora). Sakurai usa.
-10. **Coalizões em casos especiais:**
+5. **Valores pequenos e ln(1 + x).** Em Comunicações, 74% dos valores são de até R$ 10, e ali o coeficiente não se lê como variação percentual; em Transporte e Agricultura, cerca de 13%.
+6. **Comunicações (função 24) é sobretudo infraestrutura** (telecomunicações, postais). O gasto com publicidade fica em Comunicação Social (3.04.131), dentro de Administração, e não foi usado.
+7. **Lei eleitoral (Lei 9.504/1997, art. 73):** não é citada no TCC, porque Comunicações não é interpretada. Conferir a redação vigente se a pergunta aparecer.
+8. **Vinculações constitucionais:** mínimos de 15% (Saúde) e 25% (Educação) das receitas de impostos limitam a margem do prefeito.
+9. **Transferências correntes** (conta 1.1.7.0) incluem mais do que União + Estados (convênios, outras instituições), diferente de Sakurai. E a receita é bruta, sem descontar deduções (ex.: FUNDEB).
+10. **Ideologia do partido do prefeito** ficou fora do modelo (decisão do autor). Sakurai usa.
+11. **Coalizões em casos especiais:**
     - nos anos de governador de suplementar (AM 2017-18, TO 2018), usa-se a coligação da ordinária;
     - se o prefeito eleito foi afastado muito antes da suplementar, o período do interino é atribuído a ele;
     - 214 município-anos ficam sem prefeito, dos quais 49 em 2025 (eleição de 2024 sem eleito na base).
-11. **Dados preliminares e cobertura:**
+12. **Dados preliminares e cobertura:**
     - PIB nacional de 2024 e 2025 é preliminar;
     - o PIB municipal só vai até 2023;
     - o Siconfi de 2025 tem menos municípios (cerca de 5.440 contra cerca de 5.550);
     - as receitas têm queda de cobertura em 2014 (cerca de 5.180 municípios);
     - Boa Esperança do Norte (MT), instalado em 2025, não tem população em 2025.
-12. **Diferenças em relação a Sakurai (2009) a declarar:** deflator IPCA (ele usou IGP-DI); Assistência sem Previdência; Administração incluída; classificação funcional atual (Portaria 42/1999) em todo o período.
+13. **Diferenças em relação a Sakurai (2009) a declarar:** deflator IPCA (ele usou IGP-DI); forma funcional em log (o nível está no R3); Assistência sem Previdência; Administração incluída; classificação funcional atual (Portaria 42/1999) em todo o período.
 
 ---
 
 ## 10. Perguntas prováveis da banca
 
 **1. Por que efeitos fixos e não aleatórios?**
-O teste de Hausman, clássico e robusto (Mundlak), rejeita efeitos aleatórios nas 9 dependentes (p < 0,05). Na despesa total, o robusto dá 267,50 (p = 3,34e-53). O robusto foi incluído porque o clássico supõe erros sem heterocedasticidade e sem correlação no tempo.
+O teste de Hausman, clássico e robusto (Mundlak), rejeita efeitos aleatórios nas 9 dependentes (p < 0,05). Na despesa total, o robusto dá 374,28 (p = 5,90e-76). O robusto foi incluído porque o clássico supõe erros sem heterocedasticidade e sem correlação no tempo.
 
 **2. Por que dois modelos em vez de um?**
 Porque as duas perguntas pedem especificações diferentes. O ano eleitoral é igual para todos os municípios no ano, então não cabe num modelo com efeito fixo de ano (seria colinear): vai no modelo A, com tendências e PIB nacional. As coalizões precisam do efeito de ano para não confundir alinhamento com período: vão no modelo B.
 
 **3. Que evidência há de que a coalizão presidencial confundia alinhamento com período?**
-Sem efeito de ano, a coalizão presidencial sai positiva e forte: 65,039\*\*\* na despesa total no R5 e 67,005\*\*\* no modelo A. Com efeito de ano (modelo B), cai para −9,744 (n.s.). Em Educação, vai de 56,711\*\*\* (R5) para −1,253 (n.s.).
+Sem efeito de ano, a coalizão presidencial sai positiva: 0,0084\*\*\* na despesa total no R5 e 0,0092\* no modelo A. Com efeito de ano (modelo B), fica em −0,0010 (n.s.). Em Educação, vai de 0,0309\*\*\* (R5) para −0,0025 (n.s.).
 
 **4. Por que Driscoll-Kraay, se há só 13 anos?**
 Porque o ano eleitoral é um choque comum a todos os municípios. O erro precisa ser robusto à correlação entre municípios no mesmo ano, e o agrupado por município não é. Como o Driscoll-Kraay depende de muitos períodos, o critério de resultado sólido exige significância também com o erro agrupado (R12).
 
 **5. Por que uma dummy de pandemia? Ela não "rouba" o efeito de 2020?**
-Sim: com ela, o ano eleitoral é identificado por 2016 e 2024, e 2020 fica com a pandemia. Sem ela (R14), a despesa total fica em 259,057\*\* (contra 277,865\*\*\*), mas Educação passa de 49,079\* para −10,566 (n.s.), porque 2020 tem um efeito próprio forte em Educação (pandemia: −242,843\*\*\*).
+Sim: com ela, o ano eleitoral é identificado por 2016 e 2024, e 2020 fica com a pandemia. Sem ela (R14), a despesa total fica em 0,0504\*\*\* (contra 0,0519\*\*\*), mas Educação passa de 0,0343\*\* para −0,0078 (n.s.), porque 2020 tem um efeito próprio forte em Educação (pandemia: −0,1610\*\*\*, cerca de −14,9%).
 
 **6. O efeito do ano eleitoral é o mesmo nas eleições?**
-Não. No R16, a despesa total não é significativa em 2016 (30,935) e é 467,553\*\*\* em 2024. O R7a, sem 2024, dá 66,596 (n.s.). O resultado médio depende muito de 2024 (e de 2023 no pré-eleitoral). Isso deve ser discutido, e não escondido.
+Não. No R16, a despesa total é 0,0329\*\* em 2016 e 0,0650\*\*\* em 2024. O R7a, sem 2024, dá 0,0306 (n.s.), e o R7, com PIB municipal, 0,0267\*\*\*. Isso deve ser discutido, e não escondido.
 
-**7. Por que per capita em nível e não em log?**
-Para comparar com Sakurai (2009), que usa per capita em nível. O log está no R3. Na despesa total, o ano eleitoral dá 0,054\*\*\*, ou seja, a mesma direção. Em Comunicações e na coalizão presidencial em Transporte, o sinal muda em log. Esses resultados devem ser tratados com cuidado.
+**7. Por que log, e não nível como Sakurai?**
+Por sugestão do orientador, e por três motivos: municípios de tamanhos muito diferentes, comparação entre áreas de tamanhos diferentes e distribuição assimétrica (seção 6.6). O nível está no R3. Na despesa total, os dois apontam a mesma direção (0,0519\*\*\* e 277,865\*\*\*). Em Comunicações e na coalizão presidencial em Transporte, o sinal muda entre as formas. Esses resultados não são interpretados.
 
-**8. Por que não preencher com zero quando o município não informa a função?**
-Porque ausência não é zero. A classificação por função é feita pela prefeitura, e o gasto pode estar em outra conta. Zero criaria quedas e subidas artificiais. O R9 usa só quem informa sempre: Transporte fica em 48,686\*\*\* no ano eleitoral.
+**8. Por que ln(1 + x), e não ln(x)?**
+Para manter os 4 zeros na regressão. Acima de R$ 10, a diferença é menor que 0,1. O custo é que, onde há muitos valores pequenos, como em Comunicações, o coeficiente não se lê como variação percentual.
 
-**9. A exclusão dos outliers não fabricou o resultado, já que 12 deles são de 2016?**
-O R10 refaz tudo sem limpeza e o ano eleitoral na despesa total fica em 284,240\*\*\* (principal: 277,865\*\*\*). O R11, com winsorização no lugar da exclusão, dá 292,138\*\*\*. O padrão de significância do ano eleitoral e do pré-eleitoral é o mesmo nos dois.
+**9. Por que não preencher com zero quando o município não informa a função?**
+Porque ausência não é zero. A classificação por função é feita pela prefeitura, e o gasto pode estar em outra conta. Zero criaria quedas e subidas artificiais. O R9 usa só quem informa sempre: Transporte fica em 0,1525\*\*\* no ano eleitoral.
 
-**10. Como foram tratadas as fusões de partidos?**
-As renomeações (ex.: PMDB→MDB) são aplicadas sempre. As fusões, só quando o ano da fusão cai entre as duas eleições comparadas, para não criar alianças que não existiam (aplicar sempre geraria de cerca de 275 a 477 falsos 1 por ano em 2019-22). Sem fusões (R1), a coalizão do governador na despesa total fica em 28,511\*\*\*.
+**10. A exclusão dos outliers não fabricou o resultado, já que 12 deles são de 2016?**
+O R10 refaz tudo sem limpeza e o ano eleitoral na despesa total fica em 0,0499\*\*\* (principal: 0,0519\*\*\*). O R11, com winsorização no lugar da exclusão, dá 0,0529\*\*\*. O padrão de significância do ano eleitoral e do pré-eleitoral é o mesmo nos dois.
 
-**11. Por que IPCA e não IGP-DI, como Sakurai?**
-O IPCA é o índice oficial de inflação ao consumidor. Usou-se a média anual porque despesas e receitas são fluxos do ano civil (Lei 4.320, arts. 34-35). É uma diferença declarada em relação a Sakurai. Não há teste com IGP-DI.
+**11. Como foram tratadas as fusões de partidos?**
+As renomeações (ex.: PMDB→MDB) são aplicadas sempre. As fusões, só quando o ano da fusão cai entre as duas eleições comparadas, para não criar alianças que não existiam (aplicar sempre geraria de cerca de 275 a 477 falsos 1 por ano em 2019-22). Sem fusões (R1), a coalizão do governador na despesa total fica em 0,0034\*\*\*.
 
-**12. Por que PIB nacional e não PIB municipal como controle?**
-O PIB municipal só existe até 2023 e tiraria 2024-2025, inclusive uma das duas eleições que identificam o ciclo. O R7 testa o PIB municipal e o R7a mostra que a diferença vem sobretudo da amostra: 129,219\* no R7 contra 66,596 (n.s.) no R7a, na despesa total.
+**12. Por que IPCA e não IGP-DI, como Sakurai?**
+O IPCA é o índice oficial de inflação ao consumidor. Usou-se a média anual porque o valor anual soma pagamentos feitos a preços de meses diferentes. É uma diferença declarada em relação a Sakurai. Não há teste com IGP-DI.
 
-**13. As variáveis do Censo fazem sentido com efeito fixo de município?**
-Pouco: dentro do município, elas só variam pela interpolação entre 2010 e 2022 e ficam constantes em 2023-2025. Por isso ficam como controles (como em Sakurai), mas seus coeficientes não são interpretados. Sem elas (R15), o ano eleitoral fica em 277,669\*\*\* e a coalizão do governador em 31,000\*\*\*.
+**13. Por que PIB nacional e não PIB municipal como controle?**
+O PIB municipal só existe até 2023 e tiraria 2024-2025, inclusive uma das duas eleições que identificam o ciclo. O R7 testa o PIB municipal: 0,0267\*\*\* na despesa total, contra 0,0306 (n.s.) no R7a, na mesma amostra.
 
-**14. Por que Assistência sem Previdência?**
-A Previdência (regime próprio) é gasto obrigatório, com pouca margem para o prefeito, e Drazen e Eslava (2010) mostram que pensões são cortadas. O agrupamento de Sakurai está no R8: Assistência + Previdência não tem ano eleitoral significativo (10,004).
+**14. As variáveis do Censo fazem sentido com efeito fixo de município?**
+Pouco: dentro do município, elas só variam pela interpolação entre 2010 e 2022 e ficam constantes em 2023-2025. Por isso ficam como controles (como em Sakurai), mas seus coeficientes não são interpretados. Sem elas (R15), o ano eleitoral fica em 0,0516\*\*\* e a coalizão do governador em 0,0038\*\*\*.
 
-**15. Comunicações deu sinal negativo, ao contrário de Sakurai. Por quê?**
-Primeiro, a função 24 é sobretudo infraestrutura (telecomunicações, postais), não publicidade, que fica em 3.04.131. Segundo, poucos municípios a informam (média de 958 por ano). Terceiro, o resultado é frágil: −0,801\*\*\* com Driscoll-Kraay, mas n.s. com erro agrupado (R12), e positivo em log (R3: 0,071\*\*\*). A Lei 9.504/1997 também limita a publicidade no ano eleitoral.
+**15. Por que Assistência sem Previdência?**
+A Previdência (regime próprio) é gasto obrigatório, com pouca margem para o prefeito, e Drazen e Eslava (2010) mostram que pensões são cortadas. O agrupamento de Sakurai está no R8: em log, Assistência + Previdência tem ano eleitoral 0,0377\*\*\*; em nível, era 10,004 (n.s.).
+
+**16. Por que Comunicações não é interpretada?**
+Primeiro, 74% dos valores são de até R$ 10 e 25% são menores que R$ 1, e ali o coeficiente não se lê como variação percentual. Segundo, o sinal muda entre as formas (0,0318\*\*\* em log e −0,801\*\*\* em nível). Terceiro, poucos municípios a informam (média de 958 por ano). Além disso, a função 24 é sobretudo infraestrutura (telecomunicações, postais), não publicidade, que fica em 3.04.131.

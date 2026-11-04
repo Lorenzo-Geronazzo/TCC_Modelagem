@@ -6,7 +6,8 @@
 #   tabelas/descritivas_dependentes.(csv|docx)   — o mesmo para as dependentes per capita
 #   graficos/serie_<variavel>_nivel.png e        — média anual, em nível e em log,
 #   graficos/serie_<variavel>_log.png              com anos eleitorais e pré-eleitorais marcados
-#   graficos/series_todas_log.png                — as 9 variáveis num painel só (log)
+#   graficos/grupos_painel_1.png e _2.png        — os 8 grupos em dois painéis 2 x 2 (log)
+#   tabelas/medias_anuais_grupos.csv             — média anual em R$ e em ln(1 + x)
 source(here::here("regressao", "00_configuracao.R"))
 base <- carrega_base()
 
@@ -37,17 +38,22 @@ salva_tabela(tab_x, "descritivas_explicativas",
              nota = "Valores monetários em R$ de 2025 (IPCA médio anual). Variáveis binárias: a média é a proporção de 1.")
 
 dep_pc <- paste0(DEPENDENTES, "_pc")
-tab_y <- descreve(base, dep_pc)
+# Só nesta tabela: negativos como ausentes, como no ln(1 + x) dos modelos; os zeros ficam.
+# A base e as colunas <var>_pc continuam como estão.
+base_sem_negativos <- base |> mutate(across(all_of(dep_pc), ~ ifelse(.x < 0, NA, .x)))
+tab_y <- descreve(base_sem_negativos, dep_pc)
 tab_y[["Variável"]] <- rotulo(DEPENDENTES)
 print(tab_y)
 salva_tabela(tab_y, "descritivas_dependentes",
              titulo = "Estatísticas descritivas das despesas per capita (R$ de 2025)",
-             nota = "Despesas pagas por função (Siconfi, Anexo 1-E), deflacionadas pelo IPCA médio anual.")
+             nota = paste("Despesas pagas por função (Siconfi, Anexo 1-E), deflacionadas pelo IPCA médio anual.",
+                          "Valores negativos registrados no Siconfi (sete município-anos) foram tratados como ausentes,",
+                          "como nos modelos, em que a despesa entra em ln(1 + valor per capita); os valores iguais a zero foram mantidos."))
 
 # ------------------------------------------------------------------------------
 # 2) Séries temporais: média anual entre os municípios
 #    - nível: média da despesa per capita (R$)
-#    - log:   média do log da despesa per capita (menos sensível a valores extremos)
+#    - log:   média de ln(1 + despesa per capita), a mesma forma dos modelos
 # ------------------------------------------------------------------------------
 anos <- sort(unique(base$ano))
 faixas <- data.frame(
@@ -60,12 +66,12 @@ CORES_FAIXA <- c("Ano eleitoral" = "#C2410C", "Ano pré-eleitoral" = "#F59E0B")
 
 grafico_serie <- function(v, escala = c("nivel", "log")) {
   escala <- match.arg(escala)
-  coluna <- if (escala == "nivel") paste0(v, "_pc") else paste0("ln_", v, "_pc")
+  coluna <- if (escala == "nivel") paste0(v, "_pc") else dep_log(v)
   serie <- base |>
     group_by(ano) |>
     summarise(y = mean(.data[[coluna]], na.rm = TRUE),
               municipios = sum(!is.na(.data[[coluna]])), .groups = "drop")
-  eixo_y <- if (escala == "nivel") "Média per capita (R$ de 2025)" else "Média do log da despesa per capita"
+  eixo_y <- if (escala == "nivel") "Média per capita (R$ de 2025)" else "Média de ln(1 + despesa per capita)"
 
   ggplot(serie, aes(ano, y)) +
     geom_rect(data = faixas, inherit.aes = FALSE,
@@ -93,28 +99,49 @@ for (v in DEPENDENTES) {
 }
 message("Gráficos individuais salvos em ", PASTA_GRAFICOS)
 
-# Painel com as 9 variáveis (em log, escalas livres)
-todas <- base |>
-  select(ano, all_of(paste0("ln_", DEPENDENTES, "_pc"))) |>
-  pivot_longer(-ano, names_to = "variavel", values_to = "valor") |>
-  mutate(variavel = sub("^ln_(.*)_pc$", "\\1", variavel),
-         variavel = factor(rotulo(variavel), levels = rotulo(DEPENDENTES))) |>
-  group_by(ano, variavel) |>
-  summarise(y = mean(valor, na.rm = TRUE), .groups = "drop")
+# Figuras do TCC: os 8 grupos em dois painéis 2 x 2, em ln(1 + x) e escalas livres
+painel_grupos <- function(grupos, arquivo) {
+  dados <- base |>
+    select(ano, all_of(dep_log(grupos))) |>
+    pivot_longer(-ano, names_to = "variavel", values_to = "valor") |>
+    mutate(variavel = sub("^ln1p_(.*)_pc$", "\\1", variavel),
+           variavel = factor(rotulo(variavel), levels = rotulo(grupos))) |>
+    group_by(ano, variavel) |>
+    summarise(y = mean(valor, na.rm = TRUE), .groups = "drop")
 
-g_todas <- ggplot(todas, aes(ano, y)) +
-  geom_rect(data = faixas, inherit.aes = FALSE,
-            aes(xmin = ano - 0.5, xmax = ano + 0.5, ymin = -Inf, ymax = Inf, fill = tipo),
-            alpha = 0.18) +
-  geom_line(color = COR_LINHA, linewidth = 0.6) +
-  geom_point(color = COR_LINHA, size = 1.2) +
-  facet_wrap(~ variavel, scales = "free_y", ncol = 3) +
-  scale_fill_manual(values = CORES_FAIXA, name = NULL) +
-  scale_x_continuous(breaks = c(2013, 2016, 2019, 2022, 2025)) +
-  labs(x = NULL, y = "Média do log da despesa per capita (R$ de 2025)") +
-  theme_minimal(base_size = 10) +
-  theme(legend.position = "top", panel.grid.minor = element_blank())
+  g <- ggplot(dados, aes(ano, y)) +
+    geom_rect(data = faixas, inherit.aes = FALSE,
+              aes(xmin = ano - 0.5, xmax = ano + 0.5, ymin = -Inf, ymax = Inf, fill = tipo),
+              alpha = 0.18) +
+    geom_line(color = COR_LINHA, linewidth = 0.7) +
+    geom_point(color = COR_LINHA, size = 1.6) +
+    facet_wrap(~ variavel, scales = "free_y", ncol = 2) +
+    scale_fill_manual(values = CORES_FAIXA, name = NULL) +
+    scale_x_continuous(breaks = c(2013, 2016, 2019, 2022, 2025)) +
+    scale_y_continuous(labels = label_number(accuracy = 0.1, decimal.mark = ",")) +
+    labs(x = NULL, y = "Média de ln(1 + despesa per capita)") +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "top", panel.grid.minor = element_blank(),
+          strip.text = element_text(face = "bold"))
+  ggsave(file.path(PASTA_GRAFICOS, arquivo), g, width = 9, height = 8, dpi = 300, bg = "white")
+}
+painel_grupos(c("habit_urbanismo", "transporte", "saude_saneamento", "assistencia"), "grupos_painel_1.png")
+painel_grupos(c("educ_cultura", "administracao", "agricultura", "comunicacoes"), "grupos_painel_2.png")
+message("Painéis dos grupos salvos.")
 
-ggsave(file.path(PASTA_GRAFICOS, "series_todas_log.png"), g_todas,
-       width = 10, height = 8, dpi = 300, bg = "white")
-message("Painel com todas as séries salvo.")
+# ------------------------------------------------------------------------------
+# 3) Média anual de cada variável, em R$ e em ln(1 + x): só para embasar o texto
+#    da seção de evolução das despesas; não vai para o TCC
+# ------------------------------------------------------------------------------
+medias <- do.call(rbind, lapply(DEPENDENTES, function(v) {
+  base |>
+    group_by(ano) |>
+    summarise(`Média (R$)`    = round(mean(.data[[paste0(v, "_pc")]], na.rm = TRUE), 2),
+              `Média ln(1+x)` = round(mean(.data[[dep_log(v)]], na.rm = TRUE), 3),
+              .groups = "drop") |>
+    mutate(`Variável` = rotulo(v), .before = 1)
+}))
+print(as.data.frame(medias), row.names = FALSE)
+write.csv2(medias, file.path(PASTA_TABELAS, "medias_anuais_grupos.csv"), row.names = FALSE,
+           fileEncoding = "UTF-8")
+message("Tabela salva: medias_anuais_grupos.csv")

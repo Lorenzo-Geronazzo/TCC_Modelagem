@@ -12,7 +12,7 @@
 # Saídas (regressao/saidas/tabelas/latex/):
 #   regressao_principal_A.tex, regressao_principal_B.tex
 #   robustez_R1.tex ... robustez_R16.tex e robustez_R7a.tex
-#   robustez_resumo.tex — ano eleitoral e pré-eleitoral no modelo principal, R5, R12 e R14
+#   robustez_resumo.tex — ano eleitoral e pré-eleitoral no modelo principal, R5, R12, R14 e R3
 # Copiar para TCC_latex/tabelas/resultados/.
 source(here::here("regressao", "00_configuracao.R"))
 
@@ -239,6 +239,7 @@ for (nome in names(TABELAS)) converte(nome, TABELAS[[nome]]$titulo, TABELAS[[nom
 # ------------------------------------------------------------------------------
 # 4) Tabela-resumo da robustez do ciclo eleitoral (modelo A)
 #    Blocos: modelo principal, R5 (Sakurai), R12 (erro agrupado), R14 (sem pandemia)
+#    e R3 (em nível, em outra unidade)
 # ------------------------------------------------------------------------------
 # Devolve as duas linhas (coeficiente e erro-padrão) de uma variável num .csv,
 # só com as colunas de números
@@ -250,7 +251,7 @@ pega_linhas <- function(nome, rotulo) {
 }
 
 colunas_resumo <- names(le_csv("regressao_principal_A"))[-1]
-for (nome in c("robustez_R5", "robustez_R12", "robustez_R14")) {
+for (nome in c("robustez_R5", "robustez_R12", "robustez_R14", "robustez_R3")) {
   stopifnot(identical(names(le_csv(nome))[-1], colunas_resumo))   # mesmas colunas, mesma ordem
 }
 
@@ -258,7 +259,8 @@ BLOCOS_RESUMO <- list(
   list("Modelo principal (erro de Driscoll-Kraay)", "regressao_principal_A", ""),
   list("R5: especificação de Sakurai (2009) (erro agrupado por município)", "robustez_R5", " [modelo A]"),
   list("R12: erro-padrão agrupado por município", "robustez_R12", " [modelo A]"),
-  list("R14: sem a dummy de pandemia (erro de Driscoll-Kraay)", "robustez_R14", " [modelo A]")
+  list("R14: sem a dummy de pandemia (erro de Driscoll-Kraay)", "robustez_R14", " [modelo A]"),
+  list("R3: especificação em nível (R$ de 2025 per capita)", "robustez_R3", " [modelo A]")
 )
 corpo <- character(0)
 celulas_resumo <- NULL   # todas as células usadas (para a largura das colunas)
@@ -279,7 +281,9 @@ nota_resumo <- paste(
   "Coeficientes do modelo A (efeito fixo de município). Variável dependente e receitas em",
   "logaritmo de (1 + valor per capita, R\\$ de 2025); o coeficiente de uma dummy se lê como",
   "variação percentual aproximada (exata: 100 $\\times$ (exp(b) $-$ 1)).",
-  "Modelo principal e R14: erros-padrão de Driscoll-Kraay;",
+  "No painel R3, a variável dependente e as receitas estão em R\\$ de 2025 per capita, de modo que",
+  "os coeficientes desse painel estão em reais e não são comparáveis em magnitude aos demais.",
+  "Modelo principal, R14 e R3: erros-padrão de Driscoll-Kraay;",
   "R5 e R12: erros-padrão agrupados por município.",
   "O R5 segue \\textcite{sakurai2009}: sem ano pré-eleitoral e sem dummy de pandemia;",
   "o R14 retira só a dummy de pandemia, e 2020 volta a contar como ano eleitoral.",
