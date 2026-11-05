@@ -28,6 +28,7 @@ suppressPackageStartupMessages({
 # ------------------------------------------------------------------------------
 PAINEL_FINAL_REAL <- here("dados", "finais", "painel_final_real.parquet")
 BASE_REGRESSAO    <- here("dados", "finais", "base_regressao.rds")
+IBGE_ANUAL        <- here("dados", "cache", "base_ibge_anual_v2.parquet")   # população 2021 e 2024 do teste R17
 PASTA_TABELAS     <- here("regressao", "saidas", "tabelas")
 PASTA_GRAFICOS    <- here("regressao", "saidas", "graficos")
 PASTA_MODELOS     <- here("regressao", "saidas", "modelos")

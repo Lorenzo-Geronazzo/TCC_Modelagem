@@ -11,6 +11,7 @@
 #   4. Junta os atributos do município-ano (política, receitas, controles).
 #   5. Cria per capita, ano eleitoral, pré-eleitoral e tendências.
 #   5c. Cria as colunas em log da especificação principal (ln1p_*, ln_pib_nacional_real).
+#   5d. Cria as colunas com a população interpolada, só para o teste R17 (*_interp).
 source(here::here("regressao", "00_configuracao.R"))
 
 # ------------------------------------------------------------------------------
@@ -167,6 +168,36 @@ for (v in c(paste0(todas_dep, "_pc"), "receita_tributaria_real_pc", "transf_corr
   base[[paste0("ln1p_", v)]] <- ln1p(base[[v]])
 }
 base$ln_pib_nacional_real <- log(base$pib_nacional_real)   # sem o +1: nunca é zero
+
+# ------------------------------------------------------------------------------
+# 5d) População interpolada, só para o teste R17 (ver CLAUDE.md, "Quebra da série
+#     de população"). A série oficial muda de base em 2022: 2022 e 2023 viram
+#     interpolação geométrica entre as estimativas de 2021 e 2024, município a
+#     município; os demais anos ficam iguais. Se faltar 2021 ou 2024, fica o original.
+#     As colunas com sufixo _interp são novas; as originais e a limpeza não mudam.
+# ------------------------------------------------------------------------------
+pop_ref <- arrow::read_parquet(IBGE_ANUAL, col_select = all_of(c("ano", "id_municipio", "populacao"))) |>
+  mutate(id_municipio = as.character(id_municipio)) |>
+  filter(ano %in% c(2021, 2024)) |>
+  pivot_wider(names_from = ano, values_from = populacao, names_prefix = "pop_")
+
+base <- base |>
+  left_join(pop_ref, by = "id_municipio") |>
+  mutate(populacao_interp = case_when(
+    ano == 2022 & !is.na(pop_2021) & !is.na(pop_2024) ~ pop_2021 * (pop_2024 / pop_2021)^(1 / 3),
+    ano == 2023 & !is.na(pop_2021) & !is.na(pop_2024) ~ pop_2021 * (pop_2024 / pop_2021)^(2 / 3),
+    TRUE ~ as.numeric(populacao)
+  )) |>
+  select(-pop_2021, -pop_2024)
+
+razao_pop <- base$populacao / base$populacao_interp
+for (v in c(paste0(todas_dep, "_pc"), "receita_tributaria_real_pc", "transf_correntes_real_pc")) {
+  base[[paste0(v, "_interp")]] <- base[[v]] * razao_pop
+  base[[paste0("ln1p_", v, "_interp")]] <- ln1p(base[[paste0(v, "_interp")]])
+}
+base$ln_populacao_interp <- log(base$populacao_interp)
+message("População interpolada: município-anos de 2022-2023 sem 2021 ou 2024: ",
+        sum(base$ano %in% 2022:2023 & base$populacao_interp == base$populacao, na.rm = TRUE))
 
 message("\nColunas em ln(1 + x) — negativos que viram NA:")
 print(data.frame(

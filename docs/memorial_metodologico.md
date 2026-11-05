@@ -66,6 +66,13 @@ A fonte principal é a **Base dos Dados** (BigQuery, projeto de cobrança `monog
 - **Por quê:** a população é o denominador do per capita e entra como controle (em log). Com INNER JOIN, a população de 2024-25 sumia junto com o PIB inexistente, e todo per capita desses anos ficava vazio, inclusive no ano eleitoral de 2024.
 - **Alternativa considerada:** usar o PIB municipal como controle principal. Isso cortaria 2024-2025 da amostra; ver 2.9 e os testes R7 e R7a.
 - **Efeito no resultado:** com o LEFT JOIN, 2024 e 2025 entram na regressão.
+- **Quebra da série (conferida município a município com o SIDRA):**
+  - 2013-2021: estimativas antigas do IBGE (tabela 6579);
+  - 2022: contagem do Censo 2022, igual nos 5.570 municípios;
+  - 2023: arquivo do IBGE para o TCU, derivado do Censo, igual a 2022 em 5.430 municípios (pelo nome do arquivo, na malha municipal de 2023);
+  - 2024-2025: nova série de estimativas (tabela 6579, que não tem 2022 nem 2023).
+  - O total cai de 213,3 para 203,1 milhões em 2022 e volta a 212,6 milhões em 2024, o que torna, em geral, os per capita de 2022 e 2023 artificialmente maiores. A série oficial ficou nos modelos; o teste **R17** interpola 2022 e 2023 entre 2021 e 2024 e não muda os resultados principais.
+  - Divergências pequenas entre cache e SIDRA, não corrigidas (mesma soma no ano): 3 municípios em 2020, 2 em 2024 e 4 em 2025 (ver CLAUDE.md).
 - **Onde está no código:** [main_code.py, Célula 4](../codigo/main_code.py#L400).
 
 ### 1.5 IPCA, PIB nacional e Censo (SIDRA/IBGE)
@@ -462,6 +469,7 @@ Cada teste muda **uma coisa** em relação ao modelo principal, em log. As exce�
 | R14 | Modelo A sem pandemia (só A) | Desp. total 0,0504\*\*\*; Saúde 0,0649\*\*\*; Educ. −0,0078 (n.s.); Adm. 0,0174\*\* | Desp. total 0,0211 (n.s.); Educ. 0,0523\*\*; Hab. 0,0461\* | (não entra) |
 | R15 | Sem as variáveis do Censo | Igual (0,0516\*\*\*) | Igual, exceto Hab. 0,0473\* | Governador 0,0038\*\*\*. Presidente: Transp. 0,0427\*\*\* |
 | R16 | Ano eleitoral e pré-eleitoral separados por eleição (só A) | 2016: Desp. total 0,0329\*\*. 2024: 0,0650\*\*\* | 2015: 0,0083 (n.s.); 2019: −0,0025 (n.s.); 2023: 0,0511\*\* | (não entra) |
+| R17 | População de 2022 e 2023 interpolada entre as estimativas de 2021 e 2024 | Igual (0,0522\*\*\*) | Igual (0,0208) | Governador 0,0036\*\*\*, Educ. 0,0032\*, Adm. 0,0069\*\*\*. Presidente: igual |
 
 **Testes que mudam mais de uma coisa (de propósito):**
 - **R5:** especificação (sem pré-eleitoral e sem pandemia) + erro agrupado. É a especificação de Sakurai, em log.
@@ -473,6 +481,7 @@ Cada teste muda **uma coisa** em relação ao modelo principal, em log. As exce�
 - **R3:** é a antiga especificação principal, e mantém os negativos. Os coeficientes estão em R$.
 - **R9:** os municípios foram selecionados na base limpa.
 - **R16:** rodado só com Driscoll-Kraay.
+- **R17:** usa as colunas `*_interp` do `01_base_regressao.R` (dependentes, receitas e `ln_populacao`); a interpolação é geométrica, município a município, e os demais anos ficam iguais.
 - Os números em nível de R7, R7a e R16 estão no backup, não nas tabelas atuais. Coalizão presidencial, Despesa total, em nível: −17,346\*\* (R7) e −16,755\*\* (R7a).
 
 ---
@@ -589,7 +598,8 @@ O R16 troca o ano eleitoral por uma dummy para 2016 e outra para 2024. A de 2020
     - o PIB municipal só vai até 2023;
     - o Siconfi de 2025 tem menos municípios (cerca de 5.440 contra cerca de 5.550);
     - as receitas têm queda de cobertura em 2014 (cerca de 5.180 municípios);
-    - Boa Esperança do Norte (MT), instalado em 2025, não tem população em 2025.
+    - Boa Esperança do Norte (MT), instalado em 2025, está no cache de 2025 sem código de município, então fica sem população em 2025.
+14. **Quebra da série de população em 2022:** 2022 e 2023 vêm do Censo, e os demais anos, de estimativas. Os per capita desses dois anos ficam, em geral, maiores. O R17 interpola os dois anos e não muda os resultados principais (ver 1.4).
 13. **Diferenças em relação a Sakurai (2009) a declarar:** deflator IPCA (ele usou IGP-DI); forma funcional em log (o nível está no R3); Assistência sem Previdência; Administração incluída; classificação funcional atual (Portaria 42/1999) em todo o período.
 
 ---

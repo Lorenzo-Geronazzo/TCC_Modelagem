@@ -11,7 +11,7 @@
 #
 # Saídas (regressao/saidas/tabelas/latex/):
 #   regressao_principal_A.tex, regressao_principal_B.tex
-#   robustez_R1.tex ... robustez_R16.tex e robustez_R7a.tex
+#   robustez_R1.tex ... robustez_R17.tex e robustez_R7a.tex
 #   robustez_resumo.tex — ano eleitoral e pré-eleitoral no modelo principal, R5, R12, R14 e R3
 # Copiar para TCC_latex/tabelas/resultados/.
 source(here::here("regressao", "00_configuracao.R"))
@@ -57,7 +57,8 @@ TESTES <- list(
   R15 = list("sem as variáveis do Censo (jovens, idosos, urbanização)"),
   R16 = list("ano eleitoral e pré-eleitoral separados por eleição (modelo A)",
              paste(NOTA_LOG, "Só modelo A: efeito fixo de município; ano eleitoral e pré-eleitoral",
-                   "separados por eleição (2020 absorvido pela dummy de pandemia).", NOTA_DK))
+                   "separados por eleição (2020 absorvido pela dummy de pandemia).", NOTA_DK)),
+  R17 = list("população interpolada em 2022 e 2023")
 )
 for (codigo in names(TESTES)) {
   t <- TESTES[[codigo]]

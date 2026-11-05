@@ -36,6 +36,8 @@
 #   R16 Ano eleitoral e pré-eleitoral separados por eleição: eleicao_2016,
 #       eleicao_2024 (2020 fica com a pandemia), pre_2015, pre_2019 e pre_2023
 #       (só modelo A, erro Driscoll-Kraay)
+#   R17 População interpolada em 2022 e 2023, entre as estimativas de 2021 e 2024,
+#       nas dependentes, nas receitas e em ln_populacao (A e B)
 source(here::here("regressao", "00_configuracao.R"))
 base <- carrega_base()
 
@@ -237,5 +239,14 @@ roda_teste("R16", "ano eleitoral e pré-eleitoral separados por eleição (model
            nota = paste(NOTA_LOG, "Só modelo A: efeito fixo de município; ano eleitoral e pré-eleitoral",
                         "separados por eleição (2020 absorvido pela dummy de pandemia).",
                         "Erros-padrão de Driscoll-Kraay entre parênteses. *** p<0,01; ** p<0,05; * p<0,1."))
+
+# R17 — população interpolada em 2022 e 2023 (a série oficial muda de base em 2022):
+# troca as dependentes, as receitas e ln_populacao pelas colunas _interp do 01
+base_r17 <- base
+for (v in DEPENDENTES) base_r17[[dep_log(v)]] <- base_r17[[paste0(dep_log(v), "_interp")]]
+for (v in c("ln1p_receita_tributaria_real_pc", "ln1p_transf_correntes_real_pc")) base_r17[[v]] <- base_r17[[paste0(v, "_interp")]]
+base_r17$ln_populacao <- base_r17$ln_populacao_interp
+roda_teste("R17", "população interpolada em 2022 e 2023",
+           tabela_ab(estima_A(base_r17), mods_B = estima_B(base_r17)))
 
 message("Testes de robustez concluídos.")
