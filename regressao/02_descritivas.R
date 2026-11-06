@@ -8,6 +8,7 @@
 #   graficos/serie_<variavel>_log.png              com anos eleitorais e pré-eleitorais marcados
 #   graficos/grupos_painel_1.png e _2.png        — os 8 grupos em dois painéis 2 x 2 (log)
 #   tabelas/medias_anuais_grupos.csv             — média anual em R$ e em ln(1 + x)
+#   graficos/receitas_painel.png                 — receita tributária e transferências correntes (log)
 source(here::here("regressao", "00_configuracao.R"))
 base <- carrega_base()
 
@@ -145,3 +146,44 @@ print(as.data.frame(medias), row.names = FALSE)
 write.csv2(medias, file.path(PASTA_TABELAS, "medias_anuais_grupos.csv"), row.names = FALSE,
            fileEncoding = "UTF-8")
 message("Tabela salva: medias_anuais_grupos.csv")
+
+# ------------------------------------------------------------------------------
+# 4) Receitas: média anual de ln(1 + receita per capita), as mesmas variáveis
+#    dos modelos, no mesmo estilo das figuras dos grupos
+# ------------------------------------------------------------------------------
+RECEITAS <- c("receita_tributaria_real_pc" = "Receita tributária",
+              "transf_correntes_real_pc"   = "Transferências correntes")
+
+dados_rec <- base |>
+  select(ano, all_of(paste0("ln1p_", names(RECEITAS)))) |>
+  pivot_longer(-ano, names_to = "variavel", values_to = "valor") |>
+  mutate(variavel = factor(RECEITAS[sub("^ln1p_", "", variavel)], levels = RECEITAS)) |>
+  group_by(ano, variavel) |>
+  summarise(y = mean(valor, na.rm = TRUE), .groups = "drop")
+
+g_rec <- ggplot(dados_rec, aes(ano, y)) +
+  geom_rect(data = faixas, inherit.aes = FALSE,
+            aes(xmin = ano - 0.5, xmax = ano + 0.5, ymin = -Inf, ymax = Inf, fill = tipo),
+            alpha = 0.18) +
+  geom_line(color = COR_LINHA, linewidth = 0.7) +
+  geom_point(color = COR_LINHA, size = 1.6) +
+  facet_wrap(~ variavel, scales = "free_y", ncol = 2) +
+  scale_fill_manual(values = CORES_FAIXA, name = NULL) +
+  scale_x_continuous(breaks = c(2013, 2016, 2019, 2022, 2025)) +
+  scale_y_continuous(labels = label_number(accuracy = 0.1, decimal.mark = ",")) +
+  labs(x = NULL, y = "Média de ln(1 + receita per capita)") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top", panel.grid.minor = element_blank(),
+        strip.text = element_text(face = "bold"))
+ggsave(file.path(PASTA_GRAFICOS, "receitas_painel.png"), g_rec, width = 9, height = 4.5, dpi = 300, bg = "white")
+message("Painel das receitas salvo.")
+
+# Média anual das receitas, em ln(1 + x) e em R$: só impressa, para comparar com as despesas
+medias_rec <- base |>
+  group_by(ano) |>
+  summarise(trib_ln    = round(mean(ln1p_receita_tributaria_real_pc, na.rm = TRUE), 3),
+            trib_reais = round(mean(receita_tributaria_real_pc, na.rm = TRUE), 2),
+            transf_ln    = round(mean(ln1p_transf_correntes_real_pc, na.rm = TRUE), 3),
+            transf_reais = round(mean(transf_correntes_real_pc, na.rm = TRUE), 2),
+            .groups = "drop")
+print(as.data.frame(medias_rec), row.names = FALSE)
