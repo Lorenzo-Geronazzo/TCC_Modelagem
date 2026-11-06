@@ -20,7 +20,7 @@ source(here::here("regressao", "00_configuracao.R"))
 # 1) Títulos e notas (os mesmos textos dos .docx gerados pelo 04 e pelo 05;
 #    se mudar um título ou nota lá, mudar aqui também)
 # ------------------------------------------------------------------------------
-NOTA_DEP <- "Variáveis dependentes: ln(1 + despesa per capita por grupo de funções, R$ de 2025)."
+NOTA_DEP <- "Variáveis dependentes: despesa por grupo de funções."
 NOTA_DK  <- "Erros-padrão de Driscoll-Kraay entre parênteses. *** p<0,01; ** p<0,05; * p<0,1."
 
 TABELAS <- list(
@@ -89,6 +89,7 @@ escapa_nota <- function(x) {
   x <- gsub("(\\*+) p<", "\\\\textsuperscript{\\1}p$<$", x)
   x <- gsub("×", "$\\times$", x, fixed = TRUE)
   x <- gsub("−", "$-$", x, fixed = TRUE)
+  x <- gsub("seção 4.5", "\\autoref{sec:especificacao}", x, fixed = TRUE)   # vira referência cruzada no TCC
   x
 }
 
@@ -104,10 +105,12 @@ formata_celula <- function(x) {
 # Observações e Municípios já vêm com ponto e não têm vírgula: ficam iguais.
 poe_milhar <- function(x) gsub("(\\d)(?=(\\d{3})+,)", "\\1.", x, perl = TRUE)
 
-# Lê um .csv de resultados (tudo como texto), já com ponto de milhar nos números
+# Lê um .csv de resultados (tudo como texto), já com ponto de milhar nos números.
+# Os .csv gravados antes da troca de rótulos trazem "per capita, ln(1 + x)": vira "per capita (log)"
 le_csv <- function(nome) {
   tab <- read.csv2(file.path(PASTA_TABELAS, paste0(nome, ".csv")), colClasses = "character",
                    check.names = FALSE, fileEncoding = "UTF-8", na.strings = character(0))
+  tab[["Variável"]] <- gsub(", ln(1 + x)", " (log)", tab[["Variável"]], fixed = TRUE)
   tab[-1] <- lapply(tab[-1], poe_milhar)
   tab
 }
@@ -279,8 +282,8 @@ for (k in seq_along(BLOCOS_RESUMO)) {
   }
 }
 nota_resumo <- paste(
-  "Coeficientes do modelo A (efeito fixo de município). Variável dependente e receitas em",
-  "logaritmo de (1 + valor per capita, R\\$ de 2025); o coeficiente de uma dummy se lê como",
+  "Coeficientes do modelo A (efeito fixo de município). Despesa e receitas per capita, em R\\$ de 2025,",
+  "em logaritmo (\\autoref{sec:especificacao}); o coeficiente de uma dummy se lê como",
   "variação percentual aproximada (exata: 100 $\\times$ (exp(b) $-$ 1)).",
   "No painel R3, a variável dependente e as receitas estão em R\\$ de 2025 per capita, de modo que",
   "os coeficientes desse painel estão em reais e não são comparáveis em magnitude aos demais.",

@@ -82,8 +82,8 @@ ROTULOS <- c(
   segundo_mandato    = "Prefeito em segundo mandato",
   receita_tributaria_real_pc = "Receita tributária per capita (R$)",
   transf_correntes_real_pc   = "Transferências correntes per capita (R$)",
-  ln1p_receita_tributaria_real_pc = "Receita tributária per capita, ln(1 + x)",
-  ln1p_transf_correntes_real_pc   = "Transferências correntes per capita, ln(1 + x)",
+  ln1p_receita_tributaria_real_pc = "Receita tributária per capita (log)",
+  ln1p_transf_correntes_real_pc   = "Transferências correntes per capita (log)",
   perc_jovens        = "Proporção de jovens",
   perc_idosos        = "Proporção de idosos",
   grau_urb           = "Grau de urbanização",
@@ -235,7 +235,7 @@ hausman_mundlak <- function(dados, y, x, so_tempo = c("ano_eleitoral", "pre_elei
 }
 
 # Leitura da especificação em log (repetida nas notas das tabelas)
-NOTA_LOG <- paste("Variável dependente e receitas em logaritmo de (1 + valor per capita, R$ de 2025).",
+NOTA_LOG <- paste("Despesa e receitas per capita, em R$ de 2025, em logaritmo (seção 4.5).",
                   "O coeficiente de uma dummy se lê como variação percentual aproximada",
                   "(exata: 100 × (exp(b) − 1)).")
 NOTA_EP <- paste("Erros-padrão agrupados por município entre parênteses.",
@@ -255,8 +255,8 @@ NOTA_AB <- paste(NOTA_LOG, NOTA_AB_MODELOS)
 NOTA_R3 <- paste("Especificação em nível: dependente em R$ de 2025 per capita, receitas em R$ per capita",
                  "e PIB nacional em R$ trilhões.", NOTA_AB_MODELOS)
 NOTA_R4 <- paste("Variável dependente: participação do grupo na despesa total (%); o coeficiente de uma",
-                 "dummy se lê em pontos percentuais. Receitas em logaritmo de (1 + valor per capita,",
-                 "R$ de 2025).", NOTA_AB_MODELOS)
+                 "dummy se lê em pontos percentuais. Receitas per capita, em R$ de 2025, em logaritmo",
+                 "(seção 4.5).", NOTA_AB_MODELOS)
 
 # Carrega a base de regressão (gerada por 01_base_regressao.R)
 # limpa = TRUE (padrão): tira os município-anos com outlier_despesa == 1

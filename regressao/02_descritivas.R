@@ -49,7 +49,7 @@ salva_tabela(tab_y, "descritivas_dependentes",
              titulo = "Estatísticas descritivas das despesas per capita (R$ de 2025)",
              nota = paste("Despesas pagas por função (Siconfi, Anexo 1-E), deflacionadas pelo IPCA médio anual.",
                           "Valores negativos registrados no Siconfi (sete município-anos) foram tratados como ausentes,",
-                          "como nos modelos, em que a despesa entra em ln(1 + valor per capita); os valores iguais a zero foram mantidos."))
+                          "como nos modelos, em que a despesa entra em logaritmo; os valores iguais a zero foram mantidos."))
 
 # ------------------------------------------------------------------------------
 # 2) Séries temporais: média anual entre os municípios
@@ -72,7 +72,7 @@ grafico_serie <- function(v, escala = c("nivel", "log")) {
     group_by(ano) |>
     summarise(y = mean(.data[[coluna]], na.rm = TRUE),
               municipios = sum(!is.na(.data[[coluna]])), .groups = "drop")
-  eixo_y <- if (escala == "nivel") "Média per capita (R$ de 2025)" else "Média de ln(1 + despesa per capita)"
+  eixo_y <- if (escala == "nivel") "Média per capita (R$ de 2025)" else "Média do logaritmo da despesa per capita"
 
   ggplot(serie, aes(ano, y)) +
     geom_rect(data = faixas, inherit.aes = FALSE,
@@ -120,7 +120,7 @@ painel_grupos <- function(grupos, arquivo) {
     scale_fill_manual(values = CORES_FAIXA, name = NULL) +
     scale_x_continuous(breaks = c(2013, 2016, 2019, 2022, 2025)) +
     scale_y_continuous(labels = label_number(accuracy = 0.1, decimal.mark = ",")) +
-    labs(x = NULL, y = "Média de ln(1 + despesa per capita)") +
+    labs(x = NULL, y = "Média do logaritmo da despesa per capita") +
     theme_minimal(base_size = 12) +
     theme(legend.position = "top", panel.grid.minor = element_blank(),
           strip.text = element_text(face = "bold"))
@@ -171,7 +171,7 @@ g_rec <- ggplot(dados_rec, aes(ano, y)) +
   scale_fill_manual(values = CORES_FAIXA, name = NULL) +
   scale_x_continuous(breaks = c(2013, 2016, 2019, 2022, 2025)) +
   scale_y_continuous(labels = label_number(accuracy = 0.1, decimal.mark = ",")) +
-  labs(x = NULL, y = "Média de ln(1 + receita per capita)") +
+  labs(x = NULL, y = "Média do logaritmo da receita per capita") +
   theme_minimal(base_size = 12) +
   theme(legend.position = "top", panel.grid.minor = element_blank(),
         strip.text = element_text(face = "bold"))
