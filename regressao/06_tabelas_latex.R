@@ -3,7 +3,8 @@
 # ==============================================================================
 # NÃO reestima nada: lê os .csv que o 04 e o 05 salvaram em regressao/saidas/tabelas/
 # e escreve um .tex para cada um, no estilo da Tabela 2 de Sakurai (2009):
-# tabela girada (sidewaystable, pacote rotating) numa página própria, grupos de
+# tabela girada (sidewaystable, pacote rotating) numa página própria (R8 e R9,
+# estreitas, saem em retrato: ver RETRATO na seção 2), grupos de
 # despesa nas colunas, variáveis nas linhas, erro-padrão entre parênteses embaixo
 # do coeficiente, estrelas, ponto de milhar nos números acima de mil, e Observações,
 # Municípios e R² no fim. Nos testes com os dois modelos, as linhas marcadas com
@@ -164,13 +165,20 @@ espec_colunas <- function(celulas) {
          paste0(">{\\centering\\arraybackslash}p{", larguras, "pt}", collapse = ""), "@{}")
 }
 
+# Tabelas estreitas que saem em retrato (table[p]) em vez de girada: R8 (1 coluna)
+# e R9 (3 colunas). No TCC, o ap01.tex põe um \clearpage antes da R8 e outro
+# depois da R9, para as duas ficarem sozinhas na mesma página de floats.
+RETRATO <- c("robustez_R8", "robustez_R9")
+
 # Monta o ambiente completo (sidewaystable + tabular). A sidewaystable vai
 # sozinha para uma página girada, e o texto continua na página anterior.
+# As tabelas de RETRATO usam table[p] (página de floats, sem girar).
 # Tabelas longas (o modelo A) têm as linhas um pouco mais juntas, para caber na página.
 monta_tabela <- function(nome, titulo, celulas, corpo, nota_tex) {
   colunas <- names(celulas)
+  ambiente <- if (nome %in% RETRATO) "table" else "sidewaystable"
   c("% Gerado por regressao/06_tabelas_latex.R (projeto Modelagem). Não editar à mão.",
-    "\\begin{sidewaystable}",
+    if (ambiente == "table") "\\begin{table}[p]" else "\\begin{sidewaystable}",
     sprintf("\\caption{%s}\\label{tab:%s}", escapa(titulo), nome),
     "\\centering",
     "\\footnotesize",
@@ -186,7 +194,7 @@ monta_tabela <- function(nome, titulo, celulas, corpo, nota_tex) {
     "\\end{tabular}",
     "\\fonte{Elaboração própria.}",
     sprintf("\\nota{%s}", nota_tex),
-    "\\end{sidewaystable}")
+    sprintf("\\end{%s}", ambiente))
 }
 
 salva_tex <- function(linhas, nome) {
