@@ -43,8 +43,8 @@ TESTES <- list(
   R5  = list("especificação de Sakurai (sem pré-eleitoral e sem pandemia, erro agrupado)",
              paste(NOTA_LOG, "Só modelo A: efeito fixo de município, sem ano pré-eleitoral e sem pandemia.", NOTA_EP)),
   R6  = list("inclui prefeito em segundo mandato"),
-  R7  = list("PIB municipal per capita (2013-2023)"),
-  R7a = list("especificação principal na amostra 2013-2023"),
+  R7  = list("PIB municipal per capita (2013–2023)"),
+  R7a = list("especificação principal na amostra 2013–2023"),
   R8  = list("Assistência e Previdência somadas (Sakurai, 2009)"),
   R9  = list("só municípios que informam a função em todos os anos"),
   R10 = list("sem limpeza (outliers de despesa e receita original)"),
@@ -116,9 +116,12 @@ le_csv <- function(nome) {
   tab
 }
 
+# Termos estrangeiros em itálico: títulos, notas e rótulos de linha (manual UFPR)
+italico <- function(x) gsub("\\b(per capita|dummies|dummy)\\b", "\\\\textit{\\1}", x, perl = TRUE)
+
 # Uma linha da tabela: rótulo & célula & célula ... \\
 linha_tex <- function(rotulo, celulas) {
-  paste0(paste(c(escapa(rotulo), formata_celula(celulas)), collapse = " & "), " \\\\")
+  paste0(paste(c(italico(escapa(rotulo)), formata_celula(celulas)), collapse = " & "), " \\\\")
 }
 
 # Largura aproximada (em pt) de uma célula na fonte da tabela (Helvetica,
@@ -176,8 +179,6 @@ RETRATO <- c("robustez_R8", "robustez_R9")
 # Tabelas longas (o modelo A) têm as linhas um pouco mais juntas, para caber na página.
 monta_tabela <- function(nome, titulo, celulas, corpo, nota_tex) {
   colunas <- names(celulas)
-  # Termos estrangeiros em itálico, só no título e na nota (manual UFPR)
-  italico <- function(x) gsub("\\b(per capita|dummies|dummy)\\b", "\\\\textit{\\1}", x, perl = TRUE)
   nota_tex <- italico(nota_tex)
   ambiente <- if (nome %in% RETRATO) "table" else "sidewaystable"
   c("% Gerado por regressao/06_tabelas_latex.R (projeto Modelagem). Não editar à mão.",
