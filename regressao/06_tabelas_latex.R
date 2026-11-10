@@ -176,10 +176,13 @@ RETRATO <- c("robustez_R8", "robustez_R9")
 # Tabelas longas (o modelo A) têm as linhas um pouco mais juntas, para caber na página.
 monta_tabela <- function(nome, titulo, celulas, corpo, nota_tex) {
   colunas <- names(celulas)
+  # Termos estrangeiros em itálico, só no título e na nota (manual UFPR)
+  italico <- function(x) gsub("\\b(per capita|dummies|dummy)\\b", "\\\\textit{\\1}", x, perl = TRUE)
+  nota_tex <- italico(nota_tex)
   ambiente <- if (nome %in% RETRATO) "table" else "sidewaystable"
   c("% Gerado por regressao/06_tabelas_latex.R (projeto Modelagem). Não editar à mão.",
     if (ambiente == "table") "\\begin{table}[p]" else "\\begin{sidewaystable}",
-    sprintf("\\caption{%s}\\label{tab:%s}", escapa(titulo), nome),
+    sprintf("\\caption{%s}\\label{tab:%s}", italico(escapa(titulo)), nome),
     "\\centering",
     "\\footnotesize",
     "\\setlength{\\tabcolsep}{3pt}",
