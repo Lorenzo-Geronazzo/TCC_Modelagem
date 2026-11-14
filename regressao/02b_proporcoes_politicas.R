@@ -60,7 +60,6 @@ tex <- c(
   "% Gerado por regressao/02b_proporcoes_politicas.R (projeto Modelagem). Não editar à mão.",
   "\\begin{table}[htbp]",
   "\\caption{Estatísticas descritivas das variáveis políticas binárias (2013--2025)}\\label{tab:politicas}",
-  "\\centering",
   "\\footnotesize",
   "\\setlength{\\tabcolsep}{4pt}",
   "\\begin{tabular}{lrrrrr}",
@@ -70,7 +69,7 @@ tex <- c(
   linhas,
   "\\hline",
   "\\end{tabular}",
-  "\\fonte{Elaboração própria com dados do TSE.}",
+  "\\fonte{O autor (2026), com base em dados do TSE.}",
   "\\nota{Para variáveis binárias, a média é a proporção de município-anos com valor 1; o N exclui os município-anos sem prefeito definido no ano.}",
   "\\end{table}"
 )

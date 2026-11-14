@@ -119,6 +119,9 @@ le_csv <- function(nome) {
 # Termos estrangeiros em itálico: títulos, notas e rótulos de linha (manual UFPR)
 italico <- function(x) gsub("\\b(per capita|dummies|dummy)\\b", "\\\\textit{\\1}", x, perl = TRUE)
 
+# Os títulos saem em maiúsculas (manual UFPR); códigos como "R7a" ficam protegidos
+protege_caixa <- function(x) gsub("\\b(R[0-9]+[a-z])\\b", "\\\\NoCaseChange{\\1}", x, perl = TRUE)
+
 # Uma linha da tabela: rótulo & célula & célula ... \\
 linha_tex <- function(rotulo, celulas) {
   paste0(paste(c(italico(escapa(rotulo)), formata_celula(celulas)), collapse = " & "), " \\\\")
@@ -183,8 +186,7 @@ monta_tabela <- function(nome, titulo, celulas, corpo, nota_tex) {
   ambiente <- if (nome %in% RETRATO) "table" else "sidewaystable"
   c("% Gerado por regressao/06_tabelas_latex.R (projeto Modelagem). Não editar à mão.",
     if (ambiente == "table") "\\begin{table}[p]" else "\\begin{sidewaystable}",
-    sprintf("\\caption{%s}\\label{tab:%s}", italico(escapa(titulo)), nome),
-    "\\centering",
+    sprintf("\\caption{%s}\\label{tab:%s}", protege_caixa(italico(escapa(titulo))), nome),
     "\\footnotesize",
     "\\setlength{\\tabcolsep}{3pt}",
     if (length(corpo) > 25) "\\renewcommand{\\arraystretch}{0.9}",
@@ -196,7 +198,7 @@ monta_tabela <- function(nome, titulo, celulas, corpo, nota_tex) {
     corpo,
     "\\hline",
     "\\end{tabular}",
-    "\\fonte{Elaboração própria.}",
+    "\\fonte{O autor (2026).}",
     sprintf("\\nota{%s}", nota_tex),
     sprintf("\\end{%s}", ambiente))
 }
