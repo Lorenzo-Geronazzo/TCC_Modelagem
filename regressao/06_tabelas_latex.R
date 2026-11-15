@@ -67,6 +67,8 @@ for (codigo in names(TESTES)) {
     titulo = paste0("Robustez ", codigo, " — ", t[[1]]),
     nota   = if (length(t) > 1) t[[2]] else NOTA_AB)
 }
+# O R4 vai para o capítulo 5 do TCC (seção 5.2), com título próprio
+TABELAS$robustez_R4$titulo <- "Participação de cada grupo na despesa total (%), teste R4"
 
 PAINEIS <- c(A = "Modelo A (ciclo eleitoral)", B = "Modelo B (coalizões)")
 RODAPE  <- c("Observações", "Municípios", "R²")

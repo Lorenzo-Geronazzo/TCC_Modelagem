@@ -89,10 +89,12 @@ tabela_ab <- function(mods_A = NULL, vars_A = MOSTRA_A, vcov_A = vcov_dk,
   tab
 }
 
-roda_teste <- function(codigo, titulo, tab, nota = NOTA_AB) {
+# titulo_completo: título próprio, no lugar de "Robustez <código> — <titulo>" (R4)
+roda_teste <- function(codigo, titulo, tab, nota = NOTA_AB, titulo_completo = NULL) {
   message("Robustez ", codigo, ": ", titulo)
+  if (is.null(titulo_completo)) titulo_completo <- paste0("Robustez ", codigo, " — ", titulo)
   salva_tabela(tab, paste0("robustez_", codigo),
-               titulo = paste0("Robustez ", codigo, " — ", titulo), nota = nota)
+               titulo = titulo_completo, nota = nota)
   invisible(tab)
 }
 
@@ -123,7 +125,8 @@ roda_teste("R4", "participação na despesa total (%)",
            tabela_ab(estima_A(base, sufixo_y = "_part", prefixo_y = "", dependentes = deps_part),
                      mods_B = estima_B(base, sufixo_y = "_part", prefixo_y = "", dependentes = deps_part),
                      digitos = 3),
-           nota = NOTA_R4)
+           nota = NOTA_R4,
+           titulo_completo = "Participação de cada grupo na despesa total (%), teste R4")
 
 # R5 — especificação de Sakurai (2009): modelo A sem pré-eleitoral e sem
 # pandemia, erro agrupado por município (só modelo A)
